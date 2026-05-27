@@ -1,6 +1,6 @@
 [project]
 name = "static_interpolation"
-version = "0.5"
+version = "0.5.0"
 description = "Fast interpolation of panilized detector data. Optimized for static sampling points."
 keywords = ["Interpolation","EXtra"]
 readme = "README.md"
@@ -16,7 +16,7 @@ dependencies = [
     "numpy>=2.2.0,<3.0.0",
 	"scipy>=1.15.0",	
 	"numba>=0.60.0",
-	"euxfel-extra>=2025.1"
+	"extra_geom>= 1.11.0"
 	#"pyopencl>=2026.1.2",
 ]
 requires-python = ">=3.11"

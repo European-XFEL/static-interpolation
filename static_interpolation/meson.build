@@ -18,6 +18,6 @@ python_sources = [
 
 py.install_sources(
   python_sources,
-  pure: false,
-  subdir: 'extra_pieces/interpolation'
+  pure: true,
+  subdir: 'static_interpolation'
 )
