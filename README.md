@@ -61,7 +61,7 @@ axs[2].imshow(out_linear[0])
 axs[2].set_title("Linear interpolation")
 plt.show()
 ```
-![simple_interpolation](images/simple_interpolation.png)
+![simple_interpolation](docs/images/simple_interpolation.png)
 
 ### AGIPD_1M Detector & polar grid on Ewald's sphere
 ```python
@@ -148,6 +148,6 @@ for i,ax in enumerate(axs):
         
 plt.show()
 ```
-![simple_interpolation](images/agipd_interpolation.png)
+![simple_interpolation](docs/images/agipd_interpolation.png)
 
 
