@@ -55,7 +55,7 @@ class StaticInterpolator:
         return cls(layout,sampling_grid,policy=policy,mapper=mapper,engine=engine)
 
     def __call__(self,data,masks=None,out=None,out_masks=None):
-        return self.engine.apply(data,masks = masks,out=out,out_masks=out_masks)
+        return self.engine(data,masks = masks,out=out,out_masks=out_masks)
     
 class AGIPD_1MInterpolator(StaticInterpolator):
     def __init__(self,

@@ -23,7 +23,7 @@ class InterpolationEngine:
         self.layout = layout
         self.policy = policy
         
-    def apply(
+    def __call__(
         self,
         data: np.ndarray,
         masks: np.ndarray | None = None,
