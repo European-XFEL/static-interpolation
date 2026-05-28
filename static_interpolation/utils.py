@@ -137,3 +137,70 @@ def get_max_q(geom:DetectorGeometryBase,sample_detector_distance:float,xray_ener
     qs = 4*np.pi*np.sin(scatteringAngles/2)/wavelength
     #print(f'max_q = {np.max(qs)},wavelength = {wavelength},c = {c} h={h} energy = {xray_energy}')
     return np.max(qs)
+
+# Ploting for examples in documentation
+def plot_agipd_native(data,geom,ax=None,figsize=None,**kwargs):
+    ax = geom.plot_data(data,ax=ax,figsize=figsize,**kwargs)
+    ax.invert_xaxis()
+    return ax
+
+def plot_polar(polar_data,figsize=None,**kwargs):
+    from matplotlib import pyplot as plt
+    # Plotting
+    shape=polar_data.shape
+    rVal=np.arange(0,shape[0])
+    phiVal= np.linspace(0,2*np.pi,shape[1],endpoint=False)
+    r,phi=np.meshgrid(rVal,phiVal)
+    
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection='polar')
+        
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    
+    im = ax.pcolormesh(phi,r,np.swapaxes(polar_data,0,1),**kwargs)
+    fig.colorbar(im)
+    return fig,ax
+
+def _generate_test_data_agipd(geom,n_images=100,seed=123456):
+    rng = np.random.RandomState(123456)
+    
+    shape_agipd = (n_images,)+geom.expected_data_shape
+    data = rng.random(shape_agipd)
+    data*=np.arange(1,17)[None,:,None,None]
+    pixpos = geom.get_pixel_positions()
+    px, py, pz = np.moveaxis(pixpos, -1, 0)  # Separate x, y, z coordinates
+    angle = np.arctan2(py, px)
+    wedge_mask_agipd = (np.pi * 5/8 < angle) & (angle < np.pi * 7/8)
+    masks = np.zeros(data.shape,bool)
+    masks[:] = ~wedge_mask_agipd[None,...]
+    return data,masks
+
+def _plot_agipd_test(data,masks,interpolation_result,interpolation_mask,geom,figsize=None):
+    from matplotlib import pyplot as plt
+    
+    pltdat1 = data.copy()
+    pltdat1[~masks]=np.nan
+    pltdat2 = interpolation_result.copy()
+    pltdat2[~interpolation_mask]=np.nan
+    
+    fig = plt.figure(figsize=figsize)
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122, projection='polar')
+    ax1.set_title('Data',fontsize=30)
+    ax2.set_title("Polar samples on Ewald's sphere (cubic interp)",fontsize=30)
+    plot_agipd_native(pltdat1,geom,ax=ax1,cmap=None)
+
+
+    shape= interpolation_result.shape
+    rVal=np.arange(0,shape[0])
+    phiVal= np.linspace(0,2*np.pi,shape[1],endpoint=False)
+    r,phi=np.meshgrid(rVal,phiVal)
+    
+    ax2.set_yticklabels([])
+    ax2.set_xticklabels([])
+    
+    im = ax2.pcolormesh(phi,r,np.swapaxes(pltdat2,0,1),vmin=0,vmax=15)
+    fig.colorbar(im)
+
+    return fig

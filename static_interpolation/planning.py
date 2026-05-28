@@ -353,13 +353,13 @@ class InterpolationPlanner:
             if policy.boundary == InterpolationPolicy.Boundary.reject:
                 xlim = (0.0,layout.num_x  - 1.0)
                 ylim =  (0.0,layout.num_y  - 1.0)
-            linear_continuation = policy.boundary == policy.Boundary.linear_continuation
+            linear_continuation = policy.boundary == policy.Boundary.extrapolate_linear
             out = self._build_linear(sample_points,data_shape,linear_continuation,error_on_overlap,xlim,ylim)
         elif policy.method == InterpolationPolicy.Method.cubic:
             if policy.boundary == InterpolationPolicy.Boundary.reject:
                 xlim = (1.0,layout.num_x  - 2.0)
                 ylim =  (1.0,layout.num_y  - 2.0)
-            linear_continuation = policy.boundary == policy.Boundary.linear_continuation
+            linear_continuation = policy.boundary == policy.Boundary.extrapolate_linear
             out = self._build_cubic(sample_points,data_shape,linear_continuation,error_on_overlap,xlim,ylim)
         else:
             raise ValueError(f'No build method known for interpolation method {policy.method}.')

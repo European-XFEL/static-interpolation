@@ -91,10 +91,6 @@ class ImageLayout:
 @dataclass(frozen=True)
 class SamplingGrid:
     """ Defines sampling point collections.
-    If the given point array is such that points.shape[0]!=self.n_panels and points.ndim>=2 then
-    it is assumed that the input points are equal for all panels and points is broadcasted to
-    the shape (n_panels,)+points.shape. (In this case a copy is made)
-       
     Attributes:
         points (NDArray): Has standard shape (n_panels,...,2).
         n_panels (int): Number of panels.

@@ -5,7 +5,7 @@ from extra_geom.detectors import AGIPD_1MGeometry
 from .config import InterpolationPolicy
 from .data_structures import ImageLayout,SamplingGrid
 from .coordinate_mappers import CoordinateMapper,EwaldSphereMapper,IdentityMapper
-from .engines import InterpolationEngine,NumbaInterpolationEngine
+from .engines import InterpolationEngine,NumbaEngine
 from .planning import InterpolationPlanner
 from .utils import get_max_q
 
@@ -18,7 +18,7 @@ class StaticInterpolator:
                  sample_grid:SamplingGrid,
                  policy:InterpolationPolicy|None = None,
                  mapper:CoordinateMapper|None = None,
-                 engine:type[InterpolationEngine] = NumbaInterpolationEngine):
+                 engine:type[InterpolationEngine] = NumbaEngine):
         if policy is None:
             policy = InterpolationPolicy()
         if mapper is None:
@@ -45,7 +45,7 @@ class StaticInterpolator:
                          sample_detector_distance:float = 0,
                          max_q:float|None = None,
                          policy:InterpolationPolicy|None=None,
-                         engine:type[InterpolationEngine] = NumbaInterpolationEngine):
+                         engine:type[InterpolationEngine] = NumbaEngine):
         layout = ImageLayout.from_shape(geom.expected_data_shape)
         mapper = EwaldSphereMapper.from_geometry(geom,sample_detector_distance,xray_energy)
         if max_q is None:
@@ -62,7 +62,7 @@ class AGIPD_1MInterpolator(StaticInterpolator):
                  sampling_grid:SamplingGrid,
                  policy:InterpolationPolicy|None = None,
                  mapper:CoordinateMapper|None = None,
-                 engine:type[InterpolationEngine] = NumbaInterpolationEngine):
+                 engine:type[InterpolationEngine] = NumbaEngine):
         
         logical_data_shape = (16,526,128)
         data_shape = (16,512,128)
@@ -102,7 +102,7 @@ class AGIPD_1MInterpolator(StaticInterpolator):
                          sample_detector_distance:float = 0,
                          max_q:float|None = None,
                          policy:InterpolationPolicy|None=None,
-                         engine:type[InterpolationEngine] = NumbaInterpolationEngine):
+                         engine:type[InterpolationEngine] = NumbaEngine):
         if not isinstance(geom, AGIPD_1MGeometry):
             raise ValueError(f'geom is not an AGIPD_1MGeometry instance but of type {type(geom)}.')
             

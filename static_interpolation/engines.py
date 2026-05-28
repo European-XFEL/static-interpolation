@@ -65,8 +65,9 @@ class InterpolationEngine:
             raise ValueError(f"out has shape {out.shape}, expected {expected_out_shape}")
         if masks_provided and not create_out_masks and out_masks.shape != expected_out_shape:
             raise ValueError(f"out_masks has shape {out_masks.shape}, expected {expected_out_shape}")
-
-        
+        if masks_provided and data.shape!=masks.shape:
+            raise ValueError(f"Provided data and mask need tha have the same shape but data shape={data.shape} and masks shape = {masks.shape}")
+            
         
         if create_out:
             out = np.zeros(
@@ -349,7 +350,7 @@ def _apply_masked_mean_fill_flat_njit(imgs_flat,
             out_i[oid]=s
             out_mask_i[oid]=valid
             
-class NumbaInterpolationEngine(InterpolationEngine):
+class NumbaEngine(InterpolationEngine):
     """ Numba interpolation engine
     That ties toghether the above defined numba kernels.
     """

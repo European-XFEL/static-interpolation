@@ -5,6 +5,8 @@ docs_dir: docs/
 nav:
   - Home:
       - index.md
+      - Architecture.md
+      - options.md
   - API:
       - api/data_structures.md
       - api/utils.md
@@ -149,6 +151,7 @@ extra_javascript:
 
 
 plugins:
+  - autorefs
   - mkdocstrings:
       default_handler: python
       custom_templates: docs/templates
@@ -177,6 +180,5 @@ plugins:
   - search:
       lang: en
       separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
-        
 extra_css:
   - style.css
