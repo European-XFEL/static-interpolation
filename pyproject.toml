@@ -16,7 +16,8 @@ dependencies = [
     "numpy>=2.2.0,<3.0.0",
 	"scipy>=1.15.0",	
 	"numba>=0.60.0",
-	"extra_geom>= 1.11.0"
+	"extra_geom>= 1.11.0",
+	"pydantic>=2.12.2"
 	#"pyopencl>=2026.1.2",
 ]
 requires-python = ">=3.11"
