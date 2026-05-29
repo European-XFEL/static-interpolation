@@ -15,7 +15,8 @@ pip install static-interpolation
 
 ## Usage
 
-### AGIPD_1M Detector & polar grid on Ewald's sphere
+### AGIPD_1M Detector & polar grid on Ewald's sphere {#agipd-ewald-example}
+
 ![simple_interpolation](images/agipd_interpolation.png)
 ```python
 import static_interpolation as si
