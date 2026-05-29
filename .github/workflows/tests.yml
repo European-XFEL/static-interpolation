@@ -31,9 +31,8 @@ jobs:
         python3 -m pip install --upgrade pip
         python3 -m pip install -e .
         python3 -m pip install pytest
-        python3 -m pip install pytest-cov
 
 
     - name: Test with pytest
       run: |
-        python3 -m pytest --cov=static_interpolation/ --cov-report=xml .
+        python3 -m pytest .
