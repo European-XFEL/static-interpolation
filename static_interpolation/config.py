@@ -62,7 +62,7 @@ class InterpolationPolicy(NamespacedConfigModel):
         cubic = "cubic"
     class Boundary(str, Enum):
         extrapolate_nearest = "extrapolate_nearest"
-        ertrapolate_linear = "extrapolate_linear"
+        extrapolate_linear = "extrapolate_linear"
         reject = "reject"
     class OverlapMode(str, Enum):
         error = "error"
@@ -90,7 +90,7 @@ class InterpolationPolicy(NamespacedConfigModel):
     )
     
     boundary: Boundary = Field(
-        default=Boundary.linear_extrapolate,
+        default=Boundary.extrapolate_linear,
         description="""
         Boundary treatment options.
         clamp: Sets stencil values that lie outside of the data range to the value of nearest pixel in the data.

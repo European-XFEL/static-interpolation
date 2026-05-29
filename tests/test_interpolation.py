@@ -3,7 +3,7 @@ import numpy as np
 from scipy import constants
 from scipy.interpolate import RegularGridInterpolator,CubicHermiteSpline
 
-from extra_pieces.interpolation import (
+from static_interpolation import (
     data_structures,utils,coordinate_mappers,engines,planning,interpolators,config
 )
 
@@ -141,7 +141,7 @@ class TestStaticInterpolatorAgainstScipy:
         samples = data_structures.SamplingGrid(points = sample_points[None,...],n_panels=1)
         opt = config.InterpolationPolicy()
         opt.method = opt.Method.cubic
-        opt.boundary = opt.Boundary.linear_continuation
+        opt.boundary = opt.Boundary.extrapolate_linear
         reg2 = interpolators.StaticInterpolator(layout,samples,opt)
 
         assert np.allclose(ref_out,reg2(data)),"Mismatch between linear interpolation of scipy and StaticInterpolator output."
