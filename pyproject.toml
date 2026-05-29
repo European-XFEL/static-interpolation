@@ -1,15 +1,17 @@
 [project]
 name = "static_interpolation"
-version = "0.5.2"
+version = "0.5.3"
+
 description = "Fast interpolation of panilized detector data. Optimized for static sampling points."
 keywords = ["Interpolation","EXtra"]
 readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE*"]
 authors = [
     {name="Tim Berberich",email = "tim.berberich@xfel.eu"},
 ]
 classifiers = [
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD-3-Clause",
     "Programming Language :: Python :: 3 :: Only",  
 ]
 dependencies = [
