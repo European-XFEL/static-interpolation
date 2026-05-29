@@ -2,6 +2,7 @@
 ![License](https://img.shields.io/github/license/European-XFEL/static-interpolation)
 [![Documentation](https://img.shields.io/readthedocs/static-interpolation)](https://static-interpolation.readthedocs.io/en/latest/)
 [![Documentation](https://img.shields.io/badge/documentation-online-blue)](https://static-interpolation.readthedocs.io/en/latest/)
+[![Tests](https://github.com/European-XFEL/static-interpolation/actions/workflows/tests.yml/badge.svg)](https://github.com/European-XFEL/static-interpolation/actions/workflows/tests.yml)
 ![Language](https://img.shields.io/badge/language-python-blue)
 
 # static-interpolation
