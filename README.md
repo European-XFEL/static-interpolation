@@ -1,9 +1,9 @@
 [![Lates Release](https://img.shields.io/github/v/release/European-XFEL/static-interpolation)](https://github.com/European-XFEL/static-interpolation/releases)
-![License](https://img.shields.io/github/license/European-XFEL/static-interpolation)
+[![Tests](https://github.com/European-XFEL/static-interpolation/actions/workflows/tests.yml/badge.svg)](https://github.com/European-XFEL/static-interpolation/actions/workflows/tests.yml)
 [![Documentation](https://img.shields.io/readthedocs/static-interpolation)](https://static-interpolation.readthedocs.io/en/latest/)
 [![Documentation](https://img.shields.io/badge/documentation-online-blue)](https://static-interpolation.readthedocs.io/en/latest/)
-[![Tests](https://github.com/European-XFEL/static-interpolation/actions/workflows/tests.yml/badge.svg)](https://github.com/European-XFEL/static-interpolation/actions/workflows/tests.yml)
-![Language](https://img.shields.io/badge/language-python-blue)
+
+![License](https://img.shields.io/github/license/European-XFEL/static-interpolation)
 
 # static-interpolation
 Fast interpolation of panelized detector data, optimized for **static sampling positions**.
