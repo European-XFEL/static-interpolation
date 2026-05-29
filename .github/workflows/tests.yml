@@ -28,9 +28,11 @@ jobs:
     - name: Install dependencies
       # Note that we do an editable install so that coverage can look at the files in src/
       run: |
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         python3 -m pip install -e .
-        pip install pytest
+        python3 -m pip install pytest
+        python3 -m pip install pytest-cov
+
 
     - name: Test with pytest
       run: |
