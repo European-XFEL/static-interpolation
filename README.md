@@ -5,12 +5,12 @@
 ![License](https://img.shields.io/github/license/European-XFEL/static-interpolation)
 
 # static-interpolation
-Fast interpolation of panelized detector data, optimized for **static sampling positions**.
+Fast interpolation of paneled detector data, optimized for **static sampling positions**.
 
 ## Main features
 * Plan first -> execute __fast__ approach.
 * Mask aware interpolation.
-* Native support for panelized data
+* Native support for paneled data
 * [EXtra-geom](https://github.com/European-XFEL/EXtra-geom) integration.
 
 ## Installation
