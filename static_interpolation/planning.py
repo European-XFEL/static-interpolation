@@ -354,7 +354,7 @@ class InterpolationPlanner:
                 xlim = (0.0,layout.num_x_logical  - 1.0)
                 ylim =  (0.0,layout.num_y_logical  - 1.0)
             linear_continuation = policy.boundary == policy.Boundary.extrapolate_linear
-            out = self._build_linear(sample_points,data_shape,linear_continuation,error_on_overlap,xlim,ylim)
+            out = self._build_linear(sample_points,logical_shape,linear_continuation,error_on_overlap,xlim,ylim)
         elif policy.method == InterpolationPolicy.Method.cubic:
             if policy.boundary == InterpolationPolicy.Boundary.reject:
                 xlim = (1.0,layout.num_x_logical  - 2.0)
