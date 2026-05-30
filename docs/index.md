@@ -17,10 +17,10 @@ pip install static-interpolation
 
 ### AGIPD_1M Detector & polar grid on Ewald's sphere {#agipd-ewald-example}
 
-![simple_interpolation](images/agipd_interpolation.png)
+![agipd_interpolation](images/agipd_interpolation.png)
 ```python
 import static_interpolation as si
-from extra_geom import AGIPD_1MGeometry
+from extra_geom import AGIPD_1MGeometry,agipd_asic_seams
 from matplotlib import pyplot as plt
 
 geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
@@ -45,14 +45,14 @@ agipd_interp = si.AGIPD_1MInterpolator.from_polar_ewald(geom,
 										 )
 
 # make test data
-data,masks = si.utils._generate_test_data_agipd(geom,n_images=150)
+data,masks = si.utils._generate_test_data(geom,n_images=150)
 
 # Interpolate 150 agipd patterns in one go
 out,out_masks = agipd_interp(data,masks)
 
 
 # Plotting
-fig = si.utils._plot_agipd_test(data[0],masks[0],out[0],out_masks[0],geom,figsize=(32,12))
+fig = si.utils._plot_detector_test(data[0],masks[0],out[0],out_masks[0],geom,figsize=(32,12))
 plt.show()
 ```
 

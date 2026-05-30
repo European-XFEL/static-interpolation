@@ -7,7 +7,7 @@ nav:
       - index.md
       - options.md
       - Architecture.md
-      - agipd.md
+      - detectors.md
   - API:
       - api/data_structures.md
       - api/utils.md

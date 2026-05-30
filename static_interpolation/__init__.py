@@ -1,2 +1,2 @@
-from .interpolators import StaticInterpolator,AGIPD_1MInterpolator
+from .interpolators import StaticInterpolator,AGIPD_1MInterpolator,JUNGFRAU_4MInterpolator
 from .config import InterpolationPolicy
