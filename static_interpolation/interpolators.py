@@ -3,7 +3,7 @@ from extra_geom.base import DetectorGeometryBase
 from extra_geom.detectors import AGIPD_1MGeometry
 
 from .config import InterpolationPolicy
-from .data_structures import ImageLayout,SamplingGrid
+from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout
 from .coordinate_mappers import CoordinateMapper,EwaldSphereMapper,IdentityMapper
 from .engines import InterpolationEngine,NumbaEngine
 from .planning import InterpolationPlanner
@@ -58,41 +58,17 @@ class StaticInterpolator:
         return self.engine(data,masks = masks,out=out,out_masks=out_masks)
     
 class AGIPD_1MInterpolator(StaticInterpolator):
+    """ StaticInterpolator for the AGIPD_1M detector
+    """
     def __init__(self,
                  sampling_grid:SamplingGrid,
                  policy:InterpolationPolicy|None = None,
                  mapper:CoordinateMapper|None = None,
                  engine:type[InterpolationEngine] = NumbaEngine):
+
+        layout = AGIPD_1MLayout()
+        super().__init__(layout,sampling_grid,policy,mapper,engine)
         
-        logical_data_shape = (16,526,128)
-        data_shape = (16,512,128)
-        layout_logical = ImageLayout.from_shape(logical_data_shape)
-        layout = ImageLayout.from_shape(data_shape)
-        # compute stencils & weights with square logical pixels
-        super().__init__(layout_logical,sampling_grid,policy,mapper,engine)
-
-        # change all data indexes from (16,526,128) format to (512,128)
-        self.plan.weight_indices[...] = self.agipd_logical_to_physical_indexing(self.plan.weight_indices)
-        if self.plan.mean_fill_indices is not None:
-            self.plan.mean_fill_indices[...] = self.agipd_logical_to_physical_indexing(self.plan.mean_fill_indices)
-        if self.plan.nearest_data_id is not None:
-            self.plan.nearest_data_id[...] = self.agipd_logical_to_physical_indexing(self.plan.nearest_data_id)
-
-        # adjusting to the proper data_shape
-        self.layout = layout
-        self.engine.layout = layout
-
-    @staticmethod
-    def agipd_logical_to_physical_indexing(ids):
-        '''converts logical pixel indexing, where double with pixels get two virtual pixels assigned,
-            to the physical indexing where it is just one pixel.'''
-        idm,idx,idy = np.unravel_index(ids,(16,526,128))
-        o1 = (idx//66)*2
-        o2 = (idx%66)//64
-        idx = idx-o1-o2
-        ids = np.ravel_multi_index((idm,idx,idy),dims=(16,512,128))
-        return ids
-    
     @classmethod
     def from_polar_ewald(cls:type,
                          geom:AGIPD_1MGeometry,

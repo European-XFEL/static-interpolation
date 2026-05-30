@@ -1,22 +1,37 @@
 import numpy as np
 from numpy.typing import NDArray
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 
 @dataclass(frozen=True)
 class ImageLayout:
     """ Defines multi-panel image layout.
-    and implements data standardization routines.
+    ,implements data standardization routines.
 
     Attributes:
         n_panels (int) : Number of panels
-        num_x (int): Number of pixels in x-direction
-        num_y (int) : Number of pixels in y-direction
+        num_x (int): Number of data pixels in x-direction
+        num_y (int) : Number of data pixels in y-direction
+       
+        num_x_logical (int) : Number of logical pixels in x-direction
+        num_y_logical (int) : Number of logical pixels in y-direction
     """
     n_panels: int
     num_x: int
     num_y: int
+
+    # attributes to deal with detectors that have some physical pixels whose size is a multiple of num_x and num_y.
+    num_x_logical: int|None = None 
+    num_y_logical: int|None = None
+
+    def __post_init__(self):
+        if not ((self.num_x_logical is None) == (self.num_y_logical is None)):
+            raise ValueError('num_x_logical,num_y_logical must either all be None or of type int,int,NDArray.')
+        if self.num_x_logical is None:
+            object.__setattr__(self, "num_x_logical", self.num_x)
+            object.__setattr__(self, "num_y_logical", self.num_y)
+
     @classmethod
-    def from_shape(cls:type, data_shape:tuple[int,...]):
+    def from_shape(cls:type, data_shape:tuple[int,...],logical_shape=None):
         """ImageLayout constructor using a shape tuple.
     
         Args:
@@ -24,13 +39,20 @@ class ImageLayout:
         Returns:
             ImageLayout: instance
         """
-        if len(data_shape) == 2:
-            return cls(n_panels=1,num_x = data_shape[0],num_y = data_shape[1])
-        elif len(data_shape) == 3:
-            return cls(*data_shape)
+        if len(data_shape)>=2:
+            num_x = data_shape[-2]
+            num_y = data_shape[-1]
+            n_panels=1
+            if len(data_shape) == 3:
+                n_panels = data_shape[0]
         else:
             raise ValueError(f'Only data_shapes of length 2 or 3 are support but given length is {len(data_shape)}')
         
+        if logical_shape is None:
+            return cls(n_panels,num_x,num_y)
+        else:
+            return cls(n_panels,num_x,num_y,logical_shape[-2],logical_shape[-1])
+         
     def normalize(self, data:NDArray)->NDArray:
         """Normalizes input data shape to (n_images,n_panels,num_x,num_y)
         setting n_images and/or n_panels to 1 if necessary.
@@ -81,12 +103,72 @@ class ImageLayout:
         if data.shape[1:]!=self.data_shape:
             raise ValueError(f'Data shape is not normalized try to run .normalize on data first.')            
         return data.reshape(data.shape[0],-1)
+    
+    def convert_logical_to_data_ids(self,logical_ids:NDArray)->NDArray:
+        """ Converts a set of logical indices into actual data indices.
+            This Routine simply does the identity map. Subclasses are supposed to overide this
+            method.
+        
+        Args:
+            logical_ids (NDArray): Array of indices with values in 0 to n_panels*num_x_logical*num_y_logical
+        Returns:
+            NDArray: Corresponding Data indices
+        """
+        return logical_ids
+    
     @property
     def data_shape(self)->tuple[int,...]:
         """
         tuple[int,int,int]: Data shape as tuple (n_panels,num_x,num_y) 
         """
         return (self.n_panels,self.num_x,self.num_y)
+    
+    @property
+    def logical_shape(self)->tuple[int,...]:
+        """
+        tuple[int,int,int]: Data shape as tuple (n_panels,num_x,num_y) 
+        """
+        return (self.n_panels,self.num_x_logical,self.num_y_logical)
+    
+
+@dataclass(frozen=True)
+class AGIPD_1MLayout(ImageLayout):
+    """ImageLayout for the AGIPD_1M detector.
+
+    Attributes:
+        n_panels (int) : Number of panels = 16
+        num_x (int): Number of data pixels in x-direction = 512
+        num_y (int) : Number of data pixels in y-direction = 128
+       
+        num_x_logical (int) : Number of logical pixels in x-direction = 526
+        num_y_logical (int) : Number of logical pixels in y-direction = 128
+    """
+    n_panels: int =  field(init=False,default=16)
+    num_x: int = field(init=False,default=512)
+    num_y: int = field(init=False,default=128)
+
+    num_x_logical: int = field(init=False,default=526)
+    num_y_logical: int = field(init=False,default=128)
+    
+    def convert_logical_to_data_ids(self,logical_ids:NDArray)->NDArray:
+        """ Converts a set of logical AGIPD indices into actual data indices taking the double width pixel at
+        asic boundaries into account, see [https://doi.org/10.1107/S1600577518016077](https://doi.org/10.1107/S1600577518016077).
+        
+        
+        Args:
+            logical_ids (NDArray): Array of indices with values in 0 to 1077248
+        Returns:
+            NDArray: Corresponding Data indices
+        """
+        if ( (logical_ids<0) | (logical_ids>=self.n_panels*self.num_x_logical*self.num_y_logical) ).any():
+            raise ValueError(f'logical_ids contain out of bound indices allowed values are 0 to {self.n_panels*self.num_x_logical*self.num_y_logical-1}')
+        idm,idx,idy = np.unravel_index(logical_ids,self.logical_shape)
+        o1 = (idx//66)*2
+        o2 = (idx%66)//64
+        idx = idx-o1-o2
+        ids = np.ravel_multi_index((idm,idx,idy),dims=(16,512,128))
+        return ids
+    
     
 @dataclass(frozen=True)
 class SamplingGrid:

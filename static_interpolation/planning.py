@@ -340,39 +340,41 @@ class InterpolationPlanner:
             InterpolationPlan: Finished interpolation plan.
         """
         sample_points = sample_grid.ravel()
-        data_shape = layout.data_shape
+        logical_shape = layout.logical_shape
 
         
         error_on_overlap = False
         if policy.overlap_mode == InterpolationPolicy.OverlapMode.error:
             error_on_overlap = True
 
-        xlim = (-0.5,layout.num_x  - 0.5) # xlim[0] <= x < xlim[1] defines valid x
-        ylim = (-0.5,layout.num_y - 0.5) # ylim[0] <= y < ylim[1] defines valid y
+        xlim = (-0.5,layout.num_x_logical  - 0.5) # xlim[0] <= x < xlim[1] defines valid x
+        ylim = (-0.5,layout.num_y_logical - 0.5) # ylim[0] <= y < ylim[1] defines valid y
         if policy.method == InterpolationPolicy.Method.linear:
             if policy.boundary == InterpolationPolicy.Boundary.reject:
-                xlim = (0.0,layout.num_x  - 1.0)
-                ylim =  (0.0,layout.num_y  - 1.0)
+                xlim = (0.0,layout.num_x_logical  - 1.0)
+                ylim =  (0.0,layout.num_y_logical  - 1.0)
             linear_continuation = policy.boundary == policy.Boundary.extrapolate_linear
             out = self._build_linear(sample_points,data_shape,linear_continuation,error_on_overlap,xlim,ylim)
         elif policy.method == InterpolationPolicy.Method.cubic:
             if policy.boundary == InterpolationPolicy.Boundary.reject:
-                xlim = (1.0,layout.num_x  - 2.0)
-                ylim =  (1.0,layout.num_y  - 2.0)
+                xlim = (1.0,layout.num_x_logical  - 2.0)
+                ylim =  (1.0,layout.num_y_logical  - 2.0)
             linear_continuation = policy.boundary == policy.Boundary.extrapolate_linear
-            out = self._build_cubic(sample_points,data_shape,linear_continuation,error_on_overlap,xlim,ylim)
+            out = self._build_cubic(sample_points,logical_shape,linear_continuation,error_on_overlap,xlim,ylim)
         else:
             raise ValueError(f'No build method known for interpolation method {policy.method}.')
 
         
 
+        weight_indices = layout.convert_logical_to_data_ids(out[0].ravel()).ravel()
         mean_fill_indices = None
         nearest_data_id = None
         if isinstance(policy.masking,InterpolationPolicy.Masking.MeanFill):
             mean_fill_indices = self._build_mean_fill_indices(layout.data_shape)
-            nearest_data_id = out[4]
+            mean_fill_indices = layout.convert_logical_to_data_ids(mean_fill_indices)
+            nearest_data_id = layout.convert_logical_to_daata_ids(out[4])
         plan=InterpolationPlan(
-            weight_indices = out[0].flatten(),
+            weight_indices = weight_indices,
             weight_values = out[1].flatten(),
             valid_sample_ids = out[3],
             valid_sample_mask = out[2],
