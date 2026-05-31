@@ -11,7 +11,7 @@ from .utils import get_max_q
 
 #----------------------
 #   User facing API
-_MISSING = object()
+_MISSING = object
 class StaticInterpolator:
     """User Facing Interoplation Class"""
     fixed_layout_class = _MISSING

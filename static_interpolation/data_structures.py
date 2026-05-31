@@ -171,7 +171,7 @@ class AGIPD_1MLayout(ImageLayout):
 
 @dataclass(frozen=True)
 class JUNGFRAU_4MLayout(ImageLayout):
-    """ImageLayout for the AGIPD_1M detector.
+    """ImageLayout for the JUNGFRAU_4M detector.
 
     Attributes:
         n_panels (int) : Number of panels = 16
