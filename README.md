@@ -90,8 +90,8 @@ options = si.config.InterpolationPolicy()
 options.method = options.Method.linear
 
 # Instanciate interpolatiors
-interp_cubic = si.interpolators.StaticInterpolator(layout,samples)
-interp_linear = si.interpolators.StaticInterpolator(layout,samples,options)
+interp_cubic = si.interpolators.StaticInterpolator(samples,layout=layout)
+interp_linear = si.interpolators.StaticInterpolator(samples,layout=layout,policy=options)
 
 # Execute interpolations for all 20 images
 out = interp_cubic(data)
