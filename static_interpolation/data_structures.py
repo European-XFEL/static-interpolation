@@ -149,7 +149,7 @@ class AGIPD_1MLayout(ImageLayout):
 
     num_x_logical: int = field(init=False,default=526)
     num_y_logical: int = field(init=False,default=128)
-    
+        
     def convert_logical_to_data_ids(self,logical_ids:NDArray)->NDArray:
         """ Converts a set of logical AGIPD indices into actual data indices taking the double width pixel at
         asic boundaries into account, see [https://doi.org/10.1107/S1600577518016077](https://doi.org/10.1107/S1600577518016077).
@@ -166,10 +166,56 @@ class AGIPD_1MLayout(ImageLayout):
         o1 = (idx//66)*2
         o2 = (idx%66)//64
         idx = idx-o1-o2
-        ids = np.ravel_multi_index((idm,idx,idy),dims=(16,512,128))
+        ids = np.ravel_multi_index((idm,idx,idy),dims=self.data_shape)
         return ids
+
+@dataclass(frozen=True)
+class JUNGFRAU_4MLayout(ImageLayout):
+    """ImageLayout for the JUNGFRAU_4M detector.
+
+    Attributes:
+        n_panels (int) : Number of panels = 16
+        num_x (int): Number of data pixels in x-direction = 512
+        num_y (int) : Number of data pixels in y-direction = 1024
+       
+        num_x_logical (int) : Number of logical pixels in x-direction = 514
+        num_y_logical (int) : Number of logical pixels in y-direction = 1030
+    """
+    n_panels: int =  field(default=8)
+    num_x: int = field(init=False,default=512)
+    num_y: int = field(init=False,default=1024)
+
+    num_x_logical: int = field(init=False,default=514)
+    num_y_logical: int = field(init=False,default=1030)
     
-    
+    def convert_logical_to_data_ids(self,logical_ids:NDArray)->NDArray:
+        """ Converts a set of logical JUNGFRAU indices into actual data indices taking the double width/height and quadruple pixels at inner asic boundaries into account, see [https://doi.org/10.1107/S1600577526000342](https://doi.org/10.1107/S1600577526000342).
+        
+        X: --256--+1 | +1--256--  
+        Y: --256--+1 | +1--256--+1 | +1--256--+1 | +1--256--  
+        
+        Args:
+            logical_ids (NDArray): Array of indices with values in 0 to 1077248
+        Returns:
+            NDArray: Corresponding Data indices
+        """
+        if ( (logical_ids<0) | (logical_ids>=self.n_panels*self.num_x_logical*self.num_y_logical) ).any():
+            raise ValueError(f'logical_ids contain out of bound indices allowed values are 0 to {self.n_panels*self.num_x_logical*self.num_y_logical-1}')
+        
+        idm,idx,idy = np.unravel_index(logical_ids,self.logical_shape)
+        
+        ox1 = (idx//258)*2
+        ox2 = (idx%258)//256
+        idx = idx-ox1-ox2
+        
+        oy1 = (idy//258)*2
+        oy2 = (idy%258)//256
+        idy = idy-oy1-oy2
+        
+        ids = np.ravel_multi_index((idm,idx,idy),dims=self.data_shape)
+        return ids
+
+
 @dataclass(frozen=True)
 class SamplingGrid:
     """ Defines sampling point collections.

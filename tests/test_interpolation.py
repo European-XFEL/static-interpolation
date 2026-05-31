@@ -88,7 +88,7 @@ class TestStaticInterpolatorAgainstScipy:
         samples = data_structures.SamplingGrid(points = sample_points[None,...],n_panels=1)
         opt = config.InterpolationPolicy()
         opt.method = opt.Method.linear
-        reg2 = interpolators.StaticInterpolator(layout,samples,opt)
+        reg2 = interpolators.StaticInterpolator(samples,layout=layout,policy=opt)
         assert np.allclose(ref_out,reg2(data)),"Mismatch between linear interpolation of scipy and StaticInterpolator output."
 
     def catmull_rom_tangents_1d(self,v):
@@ -142,7 +142,7 @@ class TestStaticInterpolatorAgainstScipy:
         opt = config.InterpolationPolicy()
         opt.method = opt.Method.cubic
         opt.boundary = opt.Boundary.extrapolate_linear
-        reg2 = interpolators.StaticInterpolator(layout,samples,opt)
+        reg2 = interpolators.StaticInterpolator(samples,layout=layout,policy=opt)
 
         assert np.allclose(ref_out,reg2(data)),"Mismatch between linear interpolation of scipy and StaticInterpolator output."
 
