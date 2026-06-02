@@ -328,3 +328,34 @@ class TestNumbaEngine:
     
         assert np.allclose(out_flat, out_nonflat)
         assert np.array_equal(out_mask_flat, out_mask_nonflat)
+
+def test_from_struct():
+    rng = np.random.RandomState(123456)
+    n_data = 10
+    n_samples = 24
+        
+    sample_points = np.stack((rng.random(n_samples)*(n_data-1),rng.random(n_samples)*(n_data-1)),axis=-1)
+        
+    layout = data_structures.ImageLayout.from_shape((n_data,n_data))
+    samples = data_structures.SamplingGrid(points = sample_points[None,...],n_panels=1)
+    opt = config.InterpolationPolicy()
+    opt.method = opt.Method.cubic
+    opt.boundary = opt.Boundary.extrapolate_linear
+    reg1 = interpolators.StaticInterpolator(samples,layout=layout,policy=opt)
+    plan1 = reg1.plan
+    reg2 = interpolators.StaticInterpolator.from_struct(reg1.struct)
+    plan2 = reg2.plan
+    
+    assert reg2.layout.data_shape == reg1.layout.data_shape 
+    assert reg2.layout.logical_shape == reg1.layout.logical_shape
+
+    
+    assert (plan1.weight_indices == plan2.weight_indices).all()
+    assert (plan1.weight_values == plan2.weight_values).all()
+    assert (plan1.n_weights_per_sample == plan2.n_weights_per_sample).all()
+    assert (plan1.valid_sample_ids == plan2.valid_sample_ids).all()
+    assert (plan1.valid_sample_mask == plan2.valid_sample_mask).all()
+    assert plan1.out_shape == plan2.out_shape
+
+    
+    

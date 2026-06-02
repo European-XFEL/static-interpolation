@@ -1,13 +1,35 @@
 import numpy as np
 from extra_geom.base import DetectorGeometryBase
 from extra_geom.detectors import AGIPD_1MGeometry
+import pickle
+from dataclasses import dataclass
+from numpy.typing import NDArray
 
 from .config import InterpolationPolicy
 from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout,JUNGFRAU_4MLayout
 from .coordinate_mappers import CoordinateMapper,EwaldSphereMapper,IdentityMapper
 from .engines import InterpolationEngine,NumbaEngine
-from .planning import InterpolationPlanner
+from .planning import InterpolationPlanner,InterpolationPlan
 from .utils import get_max_q
+
+@dataclass(frozen=True)
+class InterpolationStruct:
+    """ Data version of a StaticInterpolator.
+    
+    Attributes:
+        plan (InterpolationPlan): Dataclass containing all precomputed arrays and information needed to perform the interpolation.
+        data_shape (tuple[int,int,int]) : input data shape
+        logical_shape (tuple[int,int]|None) : logical input data shape
+        sampling_points (NDArray): original sampling points.
+        policy (bytes): Pickled InterpolationPolicy object.
+    """
+    plan:InterpolationPlan
+    data_shape:tuple[int,int,int]
+    logical_shape:tuple[int,int,int]|None
+    sampling_points: NDArray
+    policy: bytes
+    
+    
 
 #----------------------
 #   User facing API
@@ -20,8 +42,9 @@ class StaticInterpolator:
                  layout:ImageLayout|type[None] = type(None),
                  policy:InterpolationPolicy|None = None,
                  mapper:CoordinateMapper|None = None,
-                 engine:type[InterpolationEngine] = NumbaEngine):
-        if policy is None:
+                 engine:type[InterpolationEngine] = NumbaEngine,
+                 plan:InterpolationPlan|None = None):
+        if policy is None:            
             policy = InterpolationPolicy()
         if mapper is None:
             mapper = IdentityMapper()
@@ -36,15 +59,44 @@ class StaticInterpolator:
         self.sample_grid = sample_grid
         self.policy = policy
         self.mapper = mapper
-        self.mapped_samples = self.mapper.map(sample_grid, layout)            
+
+        if isinstance(plan,InterpolationPlan):
+            self.plan = plan
+        else:
+            mapped_samples = self.mapper.map(sample_grid, layout)            
             
-        planner = InterpolationPlanner()
-        self.plan = planner.build(
-            sample_grid=self.mapped_samples,
-            layout=layout,
-            policy=policy
-        )        
+            planner = InterpolationPlanner()
+            self.plan = planner.build(
+                mapped_grid=mapped_samples,
+                layout=layout,
+                policy=policy
+            )
+            
         self.engine = engine(self.plan,layout,policy)
+        
+    @property
+    def struct(self):
+        return InterpolationStruct(
+            plan = self.plan,
+            data_shape = self.layout.data_shape,
+            logical_shape = self.layout.logical_shape,
+            sampling_points = self.sample_grid.points,
+            policy = pickle.dumps(self.policy)
+        )
+    
+    @classmethod
+    def from_struct(cls,
+                    struct:InterpolationStruct,
+                    engine:type[InterpolationEngine] = NumbaEngine):
+        policy = pickle.loads(struct.policy)
+        return cls(SamplingGrid(n_panels=struct.data_shape[0],
+                                points = struct.sampling_points),
+                   layout = ImageLayout.from_shape(struct.data_shape,struct.logical_shape),
+                   policy=policy,
+                   engine = engine,
+                   plan = struct.plan
+                   )
+        
         
     @classmethod
     def from_polar_ewald(cls:type,

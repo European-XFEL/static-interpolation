@@ -35,8 +35,8 @@ class InterpolationEngine:
         Args:
             data (NDArray): (bunch,n_panels,num_x,num_y) input data bunch.
             masks (NDArray | None): (bunch,n_panels,num_x,num_y) Optional masks for input data (good values = True bad = False)
-            out (NDArray | None): self.plan.output_shape Optional output array to store interpolation results to.
-            out_masks (NDArray | None): self.plan.output_shape Optional output array to store the mask resulting from the interpolation.
+            out (NDArray | None): self.plan.out_shape Optional output array to store interpolation results to.
+            out_masks (NDArray | None): self.plan.out_shape Optional output array to store the mask resulting from the interpolation.
 
         Returns:
             None|NDArray|tuple(NDArray,NDArray): If only data is given a single NDArray is returned, If in addition out is specified then None is returned.
@@ -58,7 +58,7 @@ class InterpolationEngine:
         data_flat = ravel(data)
         
         n = data_flat.shape[0]
-        expected_out_shape = (n,) + self.plan.output_shape
+        expected_out_shape = (n,) + self.plan.out_shape
 
         # check for correct shapes
         if out is not None and out.shape != expected_out_shape:
