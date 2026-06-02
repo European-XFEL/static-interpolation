@@ -280,7 +280,7 @@ class SamplingGrid:
         """
         return self.points.reshape(self.n_panels,-1,2)    
     @property
-    def output_shape(self)->tuple[int,...]:
+    def out_shape(self)->tuple[int,...]:
         """Returns the expected interpolation output shape.
         Follows the premis that panels are not allowed to overlap. So the output shape is self.points.shape[1:-1].
         

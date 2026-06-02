@@ -19,7 +19,7 @@ class InterpolationPlan:
         n_weights_per_sample (NDArray): (n_valid,), number of weight_indices,weight_values used for the interpolation at a given sampling point.
         valid_sample_ids (NDArray): (n_valid,) Flattened indices of sample points whose mapped coordinates lie on a data plane.
         valid_sample_mask (NDArray): (n_samples,) Boolean mask whose true values indicate sampling points are mapped onto a data plane. (np.nonzero(valid_sample_mask)[0]==valid_sample_ids)
-        output_shape (tuple[int,...]): Shape of the fineal interpolated image.
+        out_shape (tuple[int,...]): Shape of the fineal interpolated image.
         mean_fill_indices (None|NDArray): 3x3 neighbor indices of each pixel on each data plane.
         nearest_data_id (None|NDArray): (n_valid,) pixel index of the nearest data point for each sampling point.
     """
@@ -28,7 +28,7 @@ class InterpolationPlan:
     n_weights_per_sample: NDArray #(n_valid)
     valid_sample_ids: NDArray   # (n_valid,) Ids of samples that lie within the data planes.
     valid_sample_mask: NDArray   # (n_samples,) Mask over all samples that is true if sample lies in one of the data planes.
-    output_shape: tuple
+    out_shape: tuple
     mean_fill_indices: None|NDArray # (n_data_points,8)
     nearest_data_id: None|NDArray # (n_valid)
     
@@ -325,21 +325,21 @@ class InterpolationPlanner:
         return indices
     
     def build(self,
-              sample_grid:SamplingGrid,
+              mapped_grid:SamplingGrid,
               layout:ImageLayout,
               policy:InterpolationPolicy
               ) -> InterpolationPlan:
         """ Creates InterpolationPlan instances.
 
         Args:
-            sample_grid (SamplingGrid): sampling grid with points in pixel coordinates.
+            mapped_grid (SamplingGrid): sampling grid with points in pixel coordinates.
             layout (ImageLayout): Pixel panel layout.
             policy (InterpolationPolicy): Interpolation options.
 
         Returns:
             InterpolationPlan: Finished interpolation plan.
         """
-        sample_points = sample_grid.ravel()
+        sample_points = mapped_grid.ravel()
         logical_shape = layout.logical_shape
 
         
@@ -378,7 +378,7 @@ class InterpolationPlanner:
             weight_values = out[1].flatten(),
             valid_sample_ids = out[3],
             valid_sample_mask = out[2],
-            output_shape = sample_grid.output_shape,
+            out_shape = mapped_grid.out_shape,
             mean_fill_indices = mean_fill_indices,
             nearest_data_id = nearest_data_id,
             n_weights_per_sample = out[5]
