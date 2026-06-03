@@ -38,7 +38,7 @@ class StaticInterpolator:
     """User Facing Interoplation Class"""
     fixed_layout_class = _MISSING
     def __init__(self,
-                 sample_grid:SamplingGrid,
+                 sampling_grid:SamplingGrid,
                  layout:ImageLayout|type[None] = type(None),
                  policy:InterpolationPolicy|None = None,
                  mapper:CoordinateMapper|None = None,
@@ -56,14 +56,14 @@ class StaticInterpolator:
                 layout = self.fixed_layout_class()
                 
         self.layout = layout
-        self.sample_grid = sample_grid
+        self.sampling_grid = sampling_grid
         self.policy = policy
         self.mapper = mapper
 
         if isinstance(plan,InterpolationPlan):
             self.plan = plan
         else:
-            mapped_samples = self.mapper.map(sample_grid, layout)            
+            mapped_samples = self.mapper.map(sampling_grid, layout)            
             
             planner = InterpolationPlanner()
             self.plan = planner.build(
@@ -80,7 +80,7 @@ class StaticInterpolator:
             plan = self.plan,
             data_shape = self.layout.data_shape,
             logical_shape = self.layout.logical_shape,
-            sampling_points = self.sample_grid.points,
+            sampling_points = self.sampling_grid.points,
             policy = pickle.dumps(self.policy)
         )
     

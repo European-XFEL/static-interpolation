@@ -50,9 +50,13 @@ class InterpolationEngine:
         
         if masks_provided and (create_out != create_out_masks):
             raise ValueError(f'If Masks is given the output arguments (out, out_masks) have to be both None or both given. User provided type(out) = {type(out)} type(out_masks)={type(out_masks)}')
-        
+
+        if masks_provided and data.shape!=masks.shape:
+            raise ValueError(f"Provided data and mask need tha have the same shape but data shape={data.shape} and masks shape = {masks.shape}")
+
         ravel = self.layout.ravel
         normalize = self.layout.normalize
+
         
         data = normalize(data)
         data_flat = ravel(data)
@@ -64,10 +68,7 @@ class InterpolationEngine:
         if out is not None and out.shape != expected_out_shape:
             raise ValueError(f"out has shape {out.shape}, expected {expected_out_shape}")
         if masks_provided and not create_out_masks and out_masks.shape != expected_out_shape:
-            raise ValueError(f"out_masks has shape {out_masks.shape}, expected {expected_out_shape}")
-        if masks_provided and data.shape!=masks.shape:
-            raise ValueError(f"Provided data and mask need tha have the same shape but data shape={data.shape} and masks shape = {masks.shape}")
-            
+            raise ValueError(f"out_masks has shape {out_masks.shape}, expected {expected_out_shape}")            
         
         if create_out:
             out = np.zeros(
