@@ -50,7 +50,7 @@ geom = JUNGFRAUGeometry.from_module_positions(module_pos, orientations=orientati
 
 # Things that are not in geom but needed
 nr,nphi = (1024,4096) # polar coord shape
-detector_distance = 0.2 # in meters
+detector_origin = (0,0,0.2) # in meters
 xray_energy = 7000 # in eV
 
 
@@ -61,8 +61,7 @@ agipd_interp = si.JUNGFRAU_4MInterpolator.from_polar_ewald(geom,
                                          nr,
                                          nphi,
                                          xray_energy,
-                                         detector_distance,
-                                         #policy = opt
+                                         detector_origin
 										 )
 
 # make test data

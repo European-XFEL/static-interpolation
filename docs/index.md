@@ -32,7 +32,7 @@ geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
 
 # Things that are not in geom but needed
 nr,nphi = (512,2048) # polar coord shape
-detector_distance = 0.2 # in meters
+detector_origin = (0.0,0.0,0.2) # in meters
 xray_energy = 7000 # in eV
 
 
@@ -41,7 +41,7 @@ agipd_interp = si.AGIPD_1MInterpolator.from_polar_ewald(geom,
                                          nr,
                                          nphi,
                                          xray_energy,
-                                         detector_distance
+                                         detector_origin
 										 )
 
 # make test data

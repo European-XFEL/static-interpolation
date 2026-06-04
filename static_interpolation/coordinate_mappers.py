@@ -86,11 +86,11 @@ class GeometryMapper(CoordinateMapper):
             raise ValueError(f'Mismatch between self.n_panels({self.n_panels}) of sampling_grid.n_panels ({sampling_grid.n_panels}) and layout.n_panels ({layout.n_panels}).')
         
     @staticmethod
-    def parse_geometry(geom:DetectorGeometryBase,detector_distance:float|None = None)->tuple[NDArray,NDArray,NDArray]:
+    def parse_geometry(geom:DetectorGeometryBase,detector_origin:NDArray|None = None)->tuple[NDArray,NDArray,NDArray]:
         """ Translates a Detector geometry + sample detector distance into origin,xdirs,ydirs 
         Args:
             geom (DetectorGeometryBase): extra_geom.detectors.DetectorGeometryBase instance whose modules are interpreted as image panels.
-            detector_distance (float): Sample-Detector distance in meters.
+            detector_origin (NDArray): x,y,z coordinates of the detector origin.
         Returns:
             tuple(NDarray,NDArray,NDArray): origins,xdirs,ydirs
         """
@@ -109,22 +109,22 @@ class GeometryMapper(CoordinateMapper):
             xdirs[i] *= pixel_size/np.linalg.norm(xdirs[i]) 
             ydirs[i] *= pixel_size/np.linalg.norm(ydirs[i])
             
-        if detector_distance is not None:
-            origins[...,2]+=detector_distance
+        if detector_origin is not None:
+            origins[...]+=np.asarray(detector_origin)
         return origins,xdirs,ydirs
 
     @classmethod
-    def from_geometry(cls,geom:DetectorGeometryBase,detector_distance:float|None = None):
+    def from_geometry(cls,geom:DetectorGeometryBase,detector_origin:NDArray|None = None):
         """ Constructor based on DetectorGeometryBase instance.
 
         Args:
             geom (DetectorGeometryBase): geometry instance
-            detector_distance (float|None): sample detector distance in meter.
+            detector_origin (NDArray): x,y,z coordinates of the detector origin.
         
         Returns:
             GeometryMapper: Class instance
         """        
-        origins,xdirs,ydirs = cls.parse_geometry(geom,detector_distance)
+        origins,xdirs,ydirs = cls.parse_geometry(geom,detector_origin)
         return cls(origins,xdirs,ydirs)
     
     def map(self, sample_grid: SamplingGrid, layout: ImageLayout) -> SamplingGrid:
