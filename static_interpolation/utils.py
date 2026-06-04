@@ -102,12 +102,12 @@ def polar_scattering_coordinates_to_pixel_coordinates(polar_scatter_grid:NDArray
     points = (points @ (np.array([p_xdir/x_size**2,p_ydir/y_size**2]).T))
     return points
 
-def get_max_q(geom:DetectorGeometryBase,sample_detector_distance:float,xray_energy:float,pad:bool = False)->float:
+def get_max_q(geom:DetectorGeometryBase,detector_origin:NDArray,xray_energy:float,pad:bool = False)->float:
     """Computes the maximum momentum transfer in 2pi/meter for the given inputs.
 
     Args:
         geom (DetectorGeometryBase): Geometry describing the detector pixel positions.
-        sample_detector_distance (float): Distance between Sample and the Detector origin in meters [m]
+        detector_origin (NDArray): Detector origin (x,y,z) relative to the sample in meters [m]
         xray_energy (float): Energy of the used X-rays in electron Volts[eV]
         pad (bool): Whether or not to pad the pixel center coordinates so that max_q coverse the entire pixel area not only the centers. 
     Returns:
@@ -116,7 +116,7 @@ def get_max_q(geom:DetectorGeometryBase,sample_detector_distance:float,xray_ener
 
     
     pixels=geom.get_pixel_positions(centre=True)
-    pixels[...,2]+=sample_detector_distance
+    pixels[...]+=detector_origin
     r = np.linalg.norm(pixels,axis = -1)
     
     if pad:

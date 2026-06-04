@@ -87,7 +87,7 @@ class GeometryMapper(CoordinateMapper):
         
     @staticmethod
     def parse_geometry(geom:DetectorGeometryBase,detector_origin:NDArray|None = None)->tuple[NDArray,NDArray,NDArray]:
-        """ Translates a Detector geometry + sample detector distance into origin,xdirs,ydirs 
+        """ Translates a Detector geometry + sample detector origin into origin,xdirs,ydirs 
         Args:
             geom (DetectorGeometryBase): extra_geom.detectors.DetectorGeometryBase instance whose modules are interpreted as image panels.
             detector_origin (NDArray): x,y,z coordinates of the detector origin.
@@ -190,18 +190,18 @@ class EwaldSphereMapper(GeometryMapper):
         self.xray_energy = xray_energy 
 
     @classmethod
-    def from_geometry(cls,geom:DetectorGeometryBase,detector_distance:float,xray_energy:float):
+    def from_geometry(cls,geom:DetectorGeometryBase,detector_origin:NDArray,xray_energy:float):
         """ Overriding baseclass constructor from_geometry to take the extra xray_energy variable into account
 
         Args:
             geom (DetectorGeometryBase): extra_geom DetectorGeometryBase instance. Its modules define the planes.
-            detector_distance (float): Sample detector distance in meters [m].
+            detector_origin (NDArray): x,y,z coordinates of detector origin in meters [m].
             xray_energy (float): X-ray energy in electron Volt [eV].
 
         Returns:
             EwaldSphereMapper: [description]
         """
-        origins,xdirs,ydirs = cls.parse_geometry(geom,detector_distance)
+        origins,xdirs,ydirs = cls.parse_geometry(geom,detector_origin)
         return cls(origins,xdirs,ydirs,xray_energy)
     
     def map(self, sample_grid:SamplingGrid, layout:ImageLayout):
