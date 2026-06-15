@@ -288,3 +288,61 @@ class SamplingGrid:
             tuple(int,...): Shape of interpolation output 
         """
         return self.points.shape[1:-1]
+
+
+@dataclass(frozen=True)
+class SamplingMeshRegular(SamplingGrid):
+    """ Defines sampling point collections.
+    Attributes:
+        points (NDArray): Has standard shape (n_panels,num_x_cells+1,num_y_cells+1,2).
+        n_panels (int): Number of panels.
+    """
+
+    def __post_init__(self):
+        """ Forces self.points to be C-contiguous and checks points shape.
+        """
+        if self.n_panels <= 0:
+            raise ValueError(f"n_panels must be > 0, got {self.n_panels}.")
+
+        points = self.points
+
+        if not points.flags["C_CONTIGUOUS"]:
+            raise ValueError(f"Sampling points are not C_CONTIGUOUS.")
+
+        if points.ndim != 4 or points.shape[0] != self.n_panels or points.shape[-1] != 2:
+            raise ValueError(
+                f"points must have shape (n_panels, num_x_cells,num_y_cells, 2), got {points.shape}."
+            )            
+            
+    @classmethod
+    def from_uniform_polar(cls:type,n_panels:int,shape:tuple[int,int],max_radius:float,endpoint:bool=False):
+        """ Constructor of SamplingMeshRegular for a uniform polar grid.
+        
+        Args:
+            n_panels (int): number of panels
+            shape (tuple(int,int)): shape of the uniform polar grid (number_of_radial_points,number_of_angular_points)
+            max_radius (float): Maximal radial distance 
+            endpoint (bool): Whether max_radius or max_radius*(number_of_radial_points-1)/number_of_radial_points is the last radial point. 
+        """
+        
+        rs = np.linspace(0,max_radius,shape[0]+1,endpoint=endpoint)
+        phis = np.linspace(0,2*np.pi,shape[1]+1,endpoint=False)
+        points = np.stack(np.meshgrid(rs,phis,indexing="ij"),axis=-1)
+        return cls.from_shared_points(points=points,n_panels=n_panels)
+    
+    @property
+    def num_x_cells(self):
+        return self.points.shape[1]-1
+    @property
+    def num_y_cells(self):
+        return self.points.shape[2]-1
+    @property
+    def out_shape(self)->tuple[int,...]:
+        """Returns the expected interpolation output shape.
+        Follows the premis that panels are not allowed to overlap. So the output shape is self.points.shape[1:-1].
+        
+        Returns:
+            tuple(int,...): Shape of interpolation output 
+        """
+        shape = (self.points.shape[i]-1 for i in range(1,3))
+        return shape

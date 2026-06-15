@@ -2,7 +2,7 @@ import abc
 import numpy as np
 from numpy.typing import NDArray
 from extra_geom.base import DetectorGeometryBase
-from .data_structures import ImageLayout,SamplingGrid
+from .data_structures import ImageLayout,SamplingGrid,SamplingMeshRegular
 from .utils import polar_scattering_coordinates_to_pixel_coordinates
 
 #----------------------
@@ -23,6 +23,7 @@ class CoordinateMapper(abc.ABC):
             NDArray: sampling_grid.points in pixel coordinates.
         """
         pass
+    
 class IdentityMapper(CoordinateMapper):
     """Simplest possible mapper, it does nothing.
     """
@@ -82,6 +83,8 @@ class GeometryMapper(CoordinateMapper):
             sampling_grid (SamplingGrid): Input sampling grid
             layout (ImageLayout): Input image layout
         """
+        if not isinstance(sampling_grid,SamplingGrid):
+            raise ValueError(f"sampling_grid has to be an instance of SamplingGrid but given object is of type {type(sampling_grid)}")
         if not (self.n_panels == sampling_grid.n_panels == layout.n_panels):
             raise ValueError(f'Mismatch between self.n_panels({self.n_panels}) of sampling_grid.n_panels ({sampling_grid.n_panels}) and layout.n_panels ({layout.n_panels}).')
         
@@ -127,31 +130,32 @@ class GeometryMapper(CoordinateMapper):
         origins,xdirs,ydirs = cls.parse_geometry(geom,detector_origin)
         return cls(origins,xdirs,ydirs)
     
-    def map(self, sample_grid: SamplingGrid, layout: ImageLayout) -> SamplingGrid:
+    def map(self, sampling_grid: SamplingGrid, layout: ImageLayout) -> SamplingGrid:
         raise NotImplementedError
 class ZProjectionMapper(GeometryMapper):
     ''' Projetcts 2D coordinates in a plane orthogonal to the z axis onto the pixel panels.
     '''
-    def map(self, sample_grid: SamplingGrid, layout: ImageLayout)->SamplingGrid:
+    def map(self, sampling_grid: SamplingGrid, layout: ImageLayout)->SamplingGrid:
         """ Takes a SamplingGrid and an image layout and uses the classes origins,xdir and ydir to create a new SamplingGrid.
             The points of the new grid are created by extending a line from each old point along the z-Axis until it hits a panel plane.
             New points are represented in units of pixel sizes.
         Args:
-            sample_grid (SamplingGrid): input SamplingGrid
+            sampling_grid (SamplingGrid): input SamplingGrid
             layout (ImageLayout): input ImageLayout
         
         Returns:
             SamplingGrid: Sampling grid with points in pixel units.
         
         """
-        self.validate(sample_grid,layout)
+        self.validate(sampling_grid,layout)
         normals = np.array([np.cross(x,y) for x,y in zip(self.xdirs,self.ydirs)])
         orthogonal_to_z = np.isclose(np.dot(normals,np.array([0,0,1])),0)
         if orthogonal_to_z.any():
             raise ValueError(f'There are panels whose normals are orthogonal the z-axis.')
-            
-        out = SamplingGrid(sample_grid.points.copy(),sample_grid.n_panels)
-        new_points = sample_grid.ravel()
+
+        out_class = type(sampling_grid)
+        out = out_class(sampling_grid.points.copy(),sampling_grid.n_panels)
+        new_points = sampling_grid.ravel()
         out_points = out.ravel()
         zdir = np.array([0,0,1],dtype=np.float64)
         origins = self.origins_center
@@ -204,10 +208,11 @@ class EwaldSphereMapper(GeometryMapper):
         origins,xdirs,ydirs = cls.parse_geometry(geom,detector_origin)
         return cls(origins,xdirs,ydirs,xray_energy)
     
-    def map(self, sample_grid:SamplingGrid, layout:ImageLayout):
-        self.validate(sample_grid,layout)
-        out = SamplingGrid(sample_grid.points.copy(),sample_grid.n_panels)
-        new_points = sample_grid.ravel()
+    def map(self, sampling_grid:SamplingGrid, layout:ImageLayout):
+        self.validate(sampling_grid,layout)
+        out_class = type(sampling_grid)
+        out = out_class(sampling_grid.points.copy(),sampling_grid.n_panels)
+        new_points = sampling_grid.ravel()
         out_points = out.ravel()
         origins = self.origins_center
         for opts,pts,o,x,y in zip(out_points,new_points,origins,self.xdirs,self.ydirs):
