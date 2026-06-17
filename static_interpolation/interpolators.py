@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from numpy.typing import NDArray
 
 from .config import InterpolationPolicy
-from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout,JUNGFRAU_4MLayout
+from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout,JUNGFRAU_4MLayout,SamplingMeshRegular
 from .coordinate_mappers import CoordinateMapper,EwaldSphereMapper,IdentityMapper
 from .engines import InterpolationEngine,NumbaEngine
 from .planning import InterpolationPlanner,InterpolationPlan
@@ -104,7 +104,7 @@ class StaticInterpolator:
                          n_radial_samples = 32,
                          n_angular_samples = 256,
                          xray_energy:float = 10000,
-                         sample_detector_distance:float = 0,
+                         detector_origin:NDArray = np.array([0.0,0.0,0.0]),
                          max_q:float|None = None,
                          policy:InterpolationPolicy|None=None,
                          engine:type[InterpolationEngine] = NumbaEngine):
@@ -113,12 +113,13 @@ class StaticInterpolator:
             layout = cls.fixed_layout_class()
         else:
             layout = ImageLayout.from_shape(geom.expected_data_shape)
-        mapper = EwaldSphereMapper.from_geometry(geom,sample_detector_distance,xray_energy)
+        mapper = EwaldSphereMapper.from_geometry(geom,detector_origin,xray_energy)
         if max_q is None:
-            max_q = get_max_q(geom,sample_detector_distance,xray_energy,pad = True)
+            max_q = get_max_q(geom,detector_origin,xray_energy,pad = True)
         n_panels = len(geom.modules)
-        sampling_grid = SamplingGrid.from_uniform_polar(n_panels,(n_radial_samples,n_angular_samples),max_radius=max_q,)
-        return cls(sampling_grid,layout=layout,policy=policy,mapper=mapper,engine=engine)
+        sample_class = SamplingGrid if policy.method!=policy.Method.area else SamplingMeshRegular
+        samples = sample_class.from_uniform_polar(n_panels,(n_radial_samples,n_angular_samples),max_radius=max_q,)
+        return cls(samples,layout=layout,policy=policy,mapper=mapper,engine=engine)
 
     def __call__(self,data,masks=None,out=None,out_masks=None):
         return self.engine(data,masks = masks,out=out,out_masks=out_masks)

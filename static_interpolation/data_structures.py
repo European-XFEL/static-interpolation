@@ -344,5 +344,5 @@ class SamplingMeshRegular(SamplingGrid):
         Returns:
             tuple(int,...): Shape of interpolation output 
         """
-        shape = (self.points.shape[i]-1 for i in range(1,3))
+        shape = tuple(self.points.shape[i]-1 for i in range(1,3))
         return shape
