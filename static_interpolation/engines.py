@@ -123,10 +123,10 @@ def _apply_unmasked_njit(imgs_flat:NDArray, out:NDArray,weight_values:NDArray,we
                 s += wj[k] * img[ij[k]]
             out_i[valid_sample_ids[j]] = s
 @njit(parallel=False)
-def _apply_unmasked_flat_njit(imgs_flat, out,weight_values,weight_indices,valid_sample_ids,n_weight_values_per_sample)->None:
+def _apply_unmasked_flat_njit(imgs_flat, out,weight_values,weight_indices,valid_sample_ids,n_weights_per_sample)->None:
     """
     Same as _apply_unmasked_njit but allowing unequal numbers of weights for each sampling point.
-    The number of weights for a given sampling point is provided via n_weight_values_per_sample.    
+    The number of weights for a given sampling point is provided via n_weights_per_sample.    
     """ 
     M = len(imgs_flat)
     N = len(valid_sample_ids)    
@@ -135,7 +135,7 @@ def _apply_unmasked_flat_njit(imgs_flat, out,weight_values,weight_indices,valid_
         out_i = out[i]
         seen=0
         for j in range(N):
-            K = n_weight_values_per_sample[j]
+            K = n_weights_per_sample[j]
             start = seen
             end = seen + K
             seen = end
@@ -187,7 +187,7 @@ def _apply_masked_strict_flat_njit(imgs_flat,
                                    n_weights_per_sample):
     """
     Same as _apply_masked_strict_njit but allowing unequal numbers of weights for each sampling point.
-    The number of weights for a given sampling point is provided via n_weight_values_per_sample.    
+    The number of weights for a given sampling point is provided via n_weights_per_sample.    
     """
     M = len(imgs_flat)
     N = len(valid_sample_ids)
@@ -311,7 +311,7 @@ def _apply_masked_mean_fill_flat_njit(imgs_flat,
                                       max_masked):
     """
     Same as _apply_masked_mean_fill_njit but allowing unequal number of weights for each sampling point.
-    The number of weights for a given sampling point is provided via n_weight_values_per_sample.    
+    The number of weights for a given sampling point is provided via n_weights_per_sample.    
     """
     tmp_img = np.empty(imgs_flat.shape[1:],dtype = imgs_flat.dtype)
     tmp_mask = np.empty(masks_flat.shape[1:],dtype=masks_flat.dtype)

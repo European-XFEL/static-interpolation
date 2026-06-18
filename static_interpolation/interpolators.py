@@ -9,7 +9,7 @@ from .config import InterpolationPolicy
 from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout,JUNGFRAU_4MLayout,SamplingMeshRegular
 from .coordinate_mappers import CoordinateMapper,EwaldSphereMapper,IdentityMapper
 from .engines import InterpolationEngine,NumbaEngine
-from .planning import InterpolationPlanner,InterpolationPlan
+from .planning import InterpolationPlanner,InterpolationPlan,InterpolationPlannerMeshRegular
 from .utils import get_max_q
 
 @dataclass(frozen=True)
@@ -64,13 +64,23 @@ class StaticInterpolator:
             self.plan = plan
         else:
             mapped_samples = self.mapper.map(sampling_grid, layout)            
-            
-            planner = InterpolationPlanner()
-            self.plan = planner.build(
-                mapped_grid=mapped_samples,
-                layout=layout,
-                policy=policy
-            )
+
+            if policy.method == policy.Method.area:
+                if not isinstance(sampling_grid,SamplingMeshRegular):
+                    raise ValueError(f'When using method="area" the sampling_grid musst be of type SamplingMeshRegular but provided type is {type(sampling_grid)}')
+                planner = InterpolationPlannerMeshRegular()
+                self.plan = planner.build(
+                    mapped_grid=mapped_samples,
+                    layout=layout,
+                    policy=policy
+                )
+            else:
+                planner = InterpolationPlanner()
+                self.plan = planner.build(
+                    mapped_grid=mapped_samples,
+                    layout=layout,
+                    policy=policy
+                )
             
         self.engine = engine(self.plan,layout,policy)
         
@@ -108,7 +118,8 @@ class StaticInterpolator:
                          max_q:float|None = None,
                          policy:InterpolationPolicy|None=None,
                          engine:type[InterpolationEngine] = NumbaEngine):
-        
+        if policy is None:
+            policy = InterpolationPolicy()
         if issubclass(cls.fixed_layout_class,ImageLayout):
             layout = cls.fixed_layout_class()
         else:

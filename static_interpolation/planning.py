@@ -3,7 +3,7 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Callable
 from dataclasses import dataclass
-from .data_structures import SamplingGrid,ImageLayout
+from .data_structures import SamplingGrid,ImageLayout,SamplingMeshRegular
 from .config import InterpolationPolicy
 import abc
 from math import floor
@@ -647,7 +647,6 @@ def quad_bounding_box(quad):
             maxy = y
     return minx,maxx,miny,maxy
 @njit
-
 def clipped_area_quad_unit_square(quad:NDArray[np.float64],
                                   buf0:NDArray[np.float64],
                                   buf1:NDArray[np.float64]) -> float:
@@ -707,8 +706,8 @@ def clipped_area_quad_unit_square(quad:NDArray[np.float64],
         return 0.0
     buf0[n:,:] = np.nan
     return poly_area(buf0[:n])
-@njit
 
+@njit
 def _get_valid_cell_mask(vertices:NDArray[np.float64],                     
                          xlim:tuple,
                          ylim:tuple,
@@ -823,7 +822,7 @@ def point_in_convex_quad(px, py, quad):
         
         cross = (x1 - x0) * (py - y0) - (y1 - y0) * (px - x0)
         
-         if cross > 0.0:
+        if cross > 0.0:
             if sign < 0:
                 return False
             sign = 1
@@ -834,93 +833,6 @@ def point_in_convex_quad(px, py, quad):
             
     return True
 
-@njit
-def _compute_weights_area_old(vertices,valid_cell_ids,cell_areas,bboxes,largest_bbox_shape,num_x,num_y):
-    max_n_weights = largest_bbox_shape[0]*largest_bbox_shape[1]
-
-    weight_indices = np.zeros(len(cell_areas)*max_n_weights,int)
-    weight_values = np.zeros(len(cell_areas)*max_n_weights,float)
-    n_weights_per_sample = np.zeros(len(cell_areas),int)
-    buf0 = np.zeros((8, 2), dtype=np.float64)
-    buf1 = np.zeros((8, 2), dtype=np.float64)
-    local_poly = np.zeros((4,2),float)
-    poly = np.zeros((4,2),float)
-    visited_index = np.full(largest_bbox_shape,-1,int)
-
-    num_valid_cells = len(cell_areas)
-    n=0
-    for i in range(num_valid_cells):
-        panel_id = valid_cell_ids[0][i]
-        xid =  valid_cell_ids[1][i]
-        yid =  valid_cell_ids[2][i]
-
-        minx,maxx,miny,maxy = bboxes[i]
-        bbox_start_id = (floor(minx),floor(miny))
-        bbox_shape = (2+floor(maxx)-bbox_start_id[0],2+floor(maxy)-bbox_start_id[1])
-        fully_inside = (
-            (floor(minx) == floor(maxx)) 
-            and (floor(miny) == floor(maxy))
-        )
-        cell_area = cell_areas[i]
-
-        if cell_area == 0:
-            n_weights_per_sample[i] = 0
-            continue
-        if fully_inside:
-            weight_values[n] = 1
-            weight_indices[n] = panel_id*num_x*num_y + floor(minx)*num_y + floor(miny)
-            n_weights_per_sample[i]=1
-        else:
-            poly[:2]= vertices[panel_id,xid,yid:yid+2]
-            poly[2]= vertices[panel_id,xid+1,yid+1]
-            poly[3]= vertices[panel_id,xid+1,yid]
-
-            # traverse boundary
-            prev_vtx=poly[-1]
-            pixel_count = 0
-            for j in range(4):
-                start_vtx=prev_vtx
-                pixels = pixels_on_line_segment(start_vtx[0],start_vtx[1],poly[j,0],poly[j,1])
-                prev_vtx = poly[j]
-
-                for pid in range(len(pixels)):
-                    pixel = pixels[pid]
-                    visit_id = (pixel[0]-bbox_start_id[0],pixel[1]-bbox_start_id[1])
-                    if visited_index[visit_id[0],visit_id[1]]==i:
-                        continue
-                    visited_index[visit_id[0],visit_id[1]]=i
-                    
-                    local_poly[:, 0] = poly[:, 0] - pixel[0]
-                    local_poly[:, 1] = poly[:, 1] - pixel[1]
-                    area = clipped_area_quad_unit_square(local_poly, buf0, buf1)
-                    weight = area/cell_area
-                    weight_values[n+pixel_count] = weight
-                    weight_indices[n+pixel_count] = panel_id*num_x*num_y + pixel[0]*num_y + pixel[1]
-                    
-                    pixel_count+=1
-                    
-            # take care of interior pixels.
-            for pxid in range(bbox_shape[0]):
-                for pyid in range(bbox_shape[1]):
-                    if visited_index[pxid,pyid] == i:
-                        continue
-                    else:
-                        global_xid = bbox_start_id[0]+pxid
-                        global_yid = bbox_start_id[1]+pyid
-                        px = global_xid + 0.5
-                        py = global_yid + 0.5
-                        if point_in_convex_quad(px,py,poly):
-                            weight = 1/cell_area
-                            weight_values[n+pixel_count] = weight
-                            weight_indices[n+pixel_count] = panel_id*num_x*num_y + global_xid*num_y + global_yid
-                            pixel_count+=1
-                    
-            
-            n_weights_per_sample[i] = pixel_count
-        n += n_weights_per_sample[i]
-    weight_indices=weight_indices[:n]
-    weight_values=weight_values[:n]
-    return weight_indices,weight_values,n_weights_per_sample
 @njit(inline="always")
 def _flat_weight_index(panel_id: int, pix_x: int, pix_y: int, num_x: int, num_y: int) -> int:
     """Return the flattened output index for one pixel."""
@@ -1191,6 +1103,7 @@ def _compute_weights_area(vertices, valid_cell_ids, cell_areas, bboxes, largest_
         n_total += total_count
 
     return weight_indices[:n_total], weight_values[:n_total], n_weights_per_sample
+
 class InterpolationPlannerMeshRegular(InterpolationPlannerBase):
     def build(self,
               mapped_grid:SamplingMeshRegular,
@@ -1201,32 +1114,34 @@ class InterpolationPlannerMeshRegular(InterpolationPlannerBase):
             raise ValueError(f"mapped_grid must be of type SamplingMeshRegular but type {type(mapped_grid)} was provided.")
 
         # get mesh cells that lie in the data range
-        data_shape = layout.data_shape
-        xlim = (-0.5,data_shape[1]-0.5)
-        ylim = (-0.5,data_shape[2]-0.5)
+
+        xlim = (-0.5,layout.num_x_logical-0.5)
+        ylim = (-0.5,layout.num_y_logical-0.5)
         error_on_overlap = policy.overlap_mode == policy.OverlapMode.error
         valid_cell_mask = _get_valid_cell_mask(mapped_grid.points,xlim,ylim,error_on_overlap)
         
         valid_cell_ids = np.nonzero(valid_cell_mask)
-
+        
         # precompute bounding boxes and totat cell area and n_component_limit
         bboxes,cell_areas,n_components_limit,bb_max_dx,bb_max_dy = _compute_bboxes_total_area_and_component_limit(valid_cell_ids,mapped_grid.points)
         largest_bbox_shape = (2+int(bb_max_dx),2+int(bb_max_dy))
 
         # compute weights
-        num_x,num_y = layout.data_shape[1:]
         weight_indices,weight_values,n_weights_per_sample = _compute_weights_area(mapped_grid.points,
                                                                                   valid_cell_ids,
                                                                                   cell_areas,
                                                                                   bboxes,
                                                                                   largest_bbox_shape,
-                                                                                  num_x,
-                                                                                  num_y)
+                                                                                  layout.num_x_logical,
+                                                                                  layout.num_y_logical)
+
+        weight_indices = layout.convert_logical_to_data_ids(weight_indices.ravel()).ravel()
+        valid_cell_ids_flat = valid_cell_ids[1]*(mapped_grid.points.shape[2]-1)+valid_cell_ids[2]
         # instanciate interpolation plan
         plan = InterpolationPlan(weight_indices,
                                  weight_values,
                                  n_weights_per_sample,
-                                 valid_cell_ids,
+                                 valid_cell_ids_flat,
                                  valid_cell_mask,
                                  mapped_grid.out_shape,
                                  None,
