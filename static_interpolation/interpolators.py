@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from extra_geom.base import DetectorGeometryBase
 from extra_geom.detectors import AGIPD_1MGeometry
@@ -10,7 +11,7 @@ from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout,JUNGFRAU_4M
 from .coordinate_mappers import CoordinateMapper,EwaldSphereMapper,IdentityMapper
 from .engines import InterpolationEngine,NumbaEngine
 from .planning import InterpolationPlanner,InterpolationPlan,InterpolationPlannerMeshRegular
-from .utils import get_max_q
+from .utils import get_max_q,HDF5_DB
 
 @dataclass(frozen=True)
 class InterpolationStruct:
@@ -27,8 +28,23 @@ class InterpolationStruct:
     data_shape:tuple[int,int,int]
     logical_shape:tuple[int,int,int]|None
     sampling_points: NDArray
-    policy: bytes
+    policy: InterpolationPolicy
     
+    @classmethod
+    def from_hdf5(cls,path):
+        data_dict = HDF5_DB.load(path)
+        policy = json.dumps(data_dict["policy"])
+        policy = InterpolationPolicy.model_validate_json(policy)
+        data_dict["policy"]=policy
+        plan = InterpolationPlan(**data_dict["plan"])
+        data_dict["plan"]=plan
+        return cls[**data_dict]
+        
+    def save(self,path):
+        d = self.__dict__
+        d["plan"] = self.plan.__dict__
+        d["policy"] = json.dumps(self.policy.model_dump_json())
+        HDF5_DB.save(path,d)
     
 
 #----------------------

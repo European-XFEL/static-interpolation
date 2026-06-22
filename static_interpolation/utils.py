@@ -3,7 +3,8 @@ import numpy as np
 from numpy.typing import NDArray
 import scipy.constants as constants
 from extra_geom.base import DetectorGeometryBase
-
+import h5py as h5
+import traceback
 def balanced_slices(n: int, max_chunk_size: int, start: int = 0) -> list[slice]:
     """
     Split a range of length n into the minimal number of contiguous chunks,
@@ -206,3 +207,152 @@ def _plot_detector_test(data,masks,interpolation_result,interpolation_mask,geom,
     fig.colorbar(im)
 
     return fig
+
+
+
+class HDF5_DB:
+    h5=h5
+    load_custom_types=False
+    save_custom_types=False
+    def __init__(self):
+        save_custom_types={}
+        HDF5_DB.save_custom_types = save_custom_types
+
+        load_custom_types={}
+        HDF5_DB.load_custom_types = load_custom_types
+        
+    @staticmethod
+    def save(path,value_dict={},as_h5_object = False,**kwargs):     
+        if isinstance(path,str):
+            if as_h5_object:
+                return h5.File(path, 'w', libver='latest')
+            with h5.File(path, 'w') as h5file:
+                HDF5_DB.recursively_save_dict_to_group(h5file,'/',value_dict)
+        else:
+            raise FileNotFoundError('Path Error, Abort loading "{}".'.format(path))
+            
+    @staticmethod
+    def load(path,as_h5_object=False,h5_path=None,write_mode='r',**kwargs):
+        try:
+            if isinstance(path,str):
+                if not as_h5_object:
+                    if isinstance(h5_path,str):
+                        entry_point = h5_path
+                        if entry_point[-1] != '/':
+                            entry_point+='/'
+                    else:
+                        entry_point = '/'
+                    with h5.File(path, 'r') as h5file:
+                        if h5_path is not None:
+                            h5_obj = h5file[entry_point]
+                            obj_type = h5_obj.attrs.get('type',False)
+                            if isinstance(h5_obj,h5._hl.dataset.Dataset):
+                                data = HDF5_DB.load_single_dataset(h5_obj)
+                            elif obj_type=='list':
+                                data = HDF5_DB._load_list(h5_obj,'','.')
+                            elif obj_type=='tuple':
+                                data = HDF5_DB._load_tuple(h5_obj,'','.')
+                            else:
+                                data=HDF5_DB.recursively_load_dict_from_group(h5file, entry_point)
+                        else:
+                            data=HDF5_DB.recursively_load_dict_from_group(h5file, entry_point)
+                else:
+                    data = h5.File(path, write_mode)
+            else:
+                raise FileNotFoundError('Path Error, Abort loading "{}".'.format(path))
+        except Exception as e:
+            raise e
+        return data
+    
+    @staticmethod
+    def recursively_save_dict_to_group(h5_file, path, dic):
+        custom_save_routines = HDF5_DB.save_custom_types
+        for key,item in dic.items():
+            key=str(key)
+            try:                
+                if isinstance(item,(complex,float,int,bytes,bool,np.number,np.bool_)):
+                    h5_file[path].create_dataset(key,data=item)
+                elif isinstance(item,(str,np.character)):
+                    h5_file[path].create_dataset(key,data=item.encode('utf-8'))
+                    h5_file[path+'/'+key].attrs['type']='str'
+                elif isinstance(item,np.ndarray):
+                    HDF5_DB.save_numpy_array(h5_file,path,key,item)            
+                elif isinstance(item,h5.VirtualLayout):
+                    h5_file[path].create_virtual_dataset(key, item)
+                elif isinstance(item,(list,tuple)):
+                    h5_file[path].create_group(key)
+                    if isinstance(item,list):
+                        h5_file[path+'/'+key].attrs['type']='list'
+                    else:
+                        h5_file[path+'/'+key].attrs['type']='tuple'                        
+                    HDF5_DB.recursively_save_dict_to_group(h5_file, path + key + '/', {str(i):elem for i,elem in enumerate(item)})     
+                elif isinstance(item, dict):
+                    HDF5_DB._save_dict(h5_file,path,key,item)
+                elif type(item).__name__ in custom_save_routines:
+                    custom_save_routines[type(item).__name__](h5_file,path,key,item)
+                elif item is None:
+                    h5_file[path].create_dataset(key,data='None'.encode('utf-8'))
+                    h5_file[path+'/'+key].attrs['type']='none'
+                else:
+                    raise ValueError('Cannot save {} type for key {}'.format(type(item),key))
+            except Exception as e:
+                print("Failed to save key {} and item type {} with error: \n {}".format(key,type(item),e))
+    @staticmethod
+    def load_single_dataset(item):
+        custom_load_routines=HDF5_DB.load_custom_types
+        item_type = item.attrs.get('type',False)
+        if item_type == 'str':
+            val = item[()].decode('utf-8')
+        elif item_type == 'none':
+            val = None
+        elif item_type in custom_load_routines:
+            val = custom_load_routines[item_type](item)
+        else:                   
+            val = item[()]
+        return val
+                
+    @staticmethod
+    def recursively_load_dict_from_group(h5_file, path):
+        ans = {}
+        for key, item in h5_file[path].items():
+            item_type = item.attrs.get('type',False)
+            if isinstance(item, h5._hl.dataset.Dataset):                  
+                ans[key] = HDF5_DB.load_single_dataset(item)
+            elif isinstance(item, h5._hl.group.Group):
+                if item_type=='list':
+                    ans[key] = HDF5_DB._load_list(h5_file,path,key)
+                elif item_type=='tuple':
+                    ans[key] = HDF5_DB._load_tuple(h5_file,path,key)
+                else:
+                    ans[key] = HDF5_DB.recursively_load_dict_from_group(h5_file, path + key + '/')
+        return ans
+    
+    @staticmethod
+    def save_numpy_array(h5_file,path,key,array,meta_dict={}):
+        dtype=array.dtype
+        if dtype==np.dtype('complex'):
+            h5_file[path].create_dataset(key,data=array.astype('<c16'))
+        elif dtype == np.dtype('bool'):
+            h5_file[path].create_dataset(key,data=array)
+        elif 'str' in dtype.name:
+            h5_file[path].create_dataset(key,data=array.astype('S'))
+        else:
+            h5_file[path].create_dataset(key,data=array)
+            for attrib in meta_dict:
+                h5_file[path+key+'/'].attrs.create(attrib,meta_dict[attrib])
+
+
+    @staticmethod
+    def _save_dict(h5_file,path,key,item):        
+        h5_file[path].create_group(key)
+        HDF5_DB.recursively_save_dict_to_group(h5_file, path + key + '/', item)
+    @staticmethod
+    def _load_tuple(h5_file,path,key):
+        data = HDF5_DB.recursively_load_dict_from_group(h5_file, path + key + '/')
+        n_elements = len(data)
+        return tuple(data[str(i)] for i in range(n_elements))
+    @staticmethod
+    def _load_list(h5_file,path,key):
+        data = HDF5_DB.recursively_load_dict_from_group(h5_file, path + key + '/')
+        n_elements = len(data)        
+        return list(data[str(i)] for i in range(n_elements))
