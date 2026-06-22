@@ -357,5 +357,29 @@ def test_from_struct():
     assert (plan1.valid_sample_mask == plan2.valid_sample_mask).all()
     assert plan1.out_shape == plan2.out_shape
 
-    
-    
+class TestPlanningArea:
+    def test_crossed_pixels_edge_cases(self):
+        """
+        1. horizontal or vertical lines at integer positions should return empty crossed cells arrays.
+        2. So should degenerate line segments (where start and endpoint are equal).
+        3. When a line crosses an intersection no additinal cells should be added.
+          => Only cells should be returned whose interior is touched by the line segement.
+        """
+        points = np.array(((0,4,10,4),
+                           (1,2,1,9),
+                           (0.5,1.2,0.5,1.2)
+                           ))
+        for x0,y0,x1,y1 in points:
+            a = pixels_on_line_segment(x0,y0,x1,y1)
+            assert a.shape == (0,2), f'cossed pixel array should be empty but contains {a}.'
+            
+        
+        a = np.array([[0,0],[1,1]])
+        assert np.array_equal(a,pixels_on_line_segment(0.5,0.5,1.5,1.5)),f"Should only return [0,0] and [1,1] but got {a}"
+     
+    def test_crossed_pixels(self):
+        a = np.array([[0,0],[1,0],[1,1]])
+        assert np.array_equal(a,pixels_on_line_segment(0.55,0.5,1.55,1.5)),f"Should only return [0,0] [1,0] and [1,1] but got {a}"
+
+    def test_poly_area(self):
+        pass
