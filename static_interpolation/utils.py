@@ -212,8 +212,9 @@ def _plot_detector_test(data,masks,interpolation_result,interpolation_mask,geom,
 
 class HDF5_DB:
     h5=h5
-    load_custom_types=False
-    save_custom_types=False
+    debug = False
+    load_custom_types={}
+    save_custom_types={}
     def __init__(self):
         save_custom_types={}
         HDF5_DB.save_custom_types = save_custom_types
@@ -260,7 +261,7 @@ class HDF5_DB:
                     data = h5.File(path, write_mode)
             else:
                 raise FileNotFoundError('Path Error, Abort loading "{}".'.format(path))
-        except Exception as e:
+        except Exception as e:            
             raise e
         return data
     
@@ -297,6 +298,8 @@ class HDF5_DB:
                     raise ValueError('Cannot save {} type for key {}'.format(type(item),key))
             except Exception as e:
                 print("Failed to save key {} and item type {} with error: \n {}".format(key,type(item),e))
+                if self.debug:
+                    traceback.print_exc()
     @staticmethod
     def load_single_dataset(item):
         custom_load_routines=HDF5_DB.load_custom_types

@@ -29,21 +29,29 @@ class InterpolationStruct:
     logical_shape:tuple[int,int,int]|None
     sampling_points: NDArray
     policy: InterpolationPolicy
-    
+
     @classmethod
-    def from_hdf5(cls,path):
-        data_dict = HDF5_DB.load(path)
+    def from_dict(cls,data_dict):
         policy = json.dumps(data_dict["policy"])
         policy = InterpolationPolicy.model_validate_json(policy)
         data_dict["policy"]=policy
         plan = InterpolationPlan(**data_dict["plan"])
         data_dict["plan"]=plan
-        return cls[**data_dict]
+        return cls(**data_dict)
         
-    def save(self,path):
+    @classmethod
+    def from_hdf5(cls,path):
+        data_dict = HDF5_DB.load(path)
+        return cls.from_dict(data_dict)
+    
+    def to_dict(self):
         d = self.__dict__
         d["plan"] = self.plan.__dict__
-        d["policy"] = json.dumps(self.policy.model_dump_json())
+        d["policy"] = json.loads(self.policy.model_dump_json())
+        return d
+        
+    def save(self,path):
+        d = self.to_dict()
         HDF5_DB.save(path,d)
     
 
@@ -107,18 +115,17 @@ class StaticInterpolator:
             data_shape = self.layout.data_shape,
             logical_shape = self.layout.logical_shape,
             sampling_points = self.sampling_grid.points,
-            policy = pickle.dumps(self.policy)
+            policy = self.policy
         )
     
     @classmethod
     def from_struct(cls,
                     struct:InterpolationStruct,
                     engine:type[InterpolationEngine] = NumbaEngine):
-        policy = pickle.loads(struct.policy)
         return cls(SamplingGrid(n_panels=struct.data_shape[0],
                                 points = struct.sampling_points),
                    layout = ImageLayout.from_shape(struct.data_shape,struct.logical_shape),
-                   policy=policy,
+                   policy=struct.policy,
                    engine = engine,
                    plan = struct.plan
                    )
