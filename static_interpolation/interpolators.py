@@ -40,8 +40,8 @@ class InterpolationStruct:
         return cls(**data_dict)
         
     @classmethod
-    def from_hdf5(cls,path):
-        data_dict = HDF5_DB.load(path)
+    def from_hdf5(cls,path,h5_path=None):
+        data_dict = HDF5_DB.load(path,h5_path=h5_path)
         return cls.from_dict(data_dict)
     
     def to_dict(self):
@@ -129,8 +129,8 @@ class StaticInterpolator:
                    engine = engine,
                    plan = struct.plan
                    )
-        
-        
+
+    
     @classmethod
     def from_polar_ewald(cls:type,
                          geom:DetectorGeometryBase,
