@@ -370,16 +370,16 @@ class TestPlanningArea:
                            (0.5,1.2,0.5,1.2)
                            ))
         for x0,y0,x1,y1 in points:
-            a = pixels_on_line_segment(x0,y0,x1,y1)
+            a = planning.pixels_on_line_segment(x0,y0,x1,y1)
             assert a.shape == (0,2), f'cossed pixel array should be empty but contains {a}.'
             
         
         a = np.array([[0,0],[1,1]])
-        assert np.array_equal(a,pixels_on_line_segment(0.5,0.5,1.5,1.5)),f"Should only return [0,0] and [1,1] but got {a}"
+        assert np.array_equal(a,planning.pixels_on_line_segment(0.5,0.5,1.5,1.5)),f"Should only return [0,0] and [1,1] but got {a}"
      
     def test_crossed_pixels(self):
         a = np.array([[0,0],[1,0],[1,1]])
-        assert np.array_equal(a,pixels_on_line_segment(0.55,0.5,1.55,1.5)),f"Should only return [0,0] [1,0] and [1,1] but got {a}"
+        assert np.array_equal(a,planning.pixels_on_line_segment(0.55,0.5,1.55,1.5)),f"Should only return [0,0] [1,0] and [1,1] but got {a}"
 
     def test_poly_area(self):
         pass
