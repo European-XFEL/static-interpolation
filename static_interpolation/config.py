@@ -11,6 +11,7 @@ class StrictBaseModel(BaseModel):
             validate_assignment=True,
             validate_default=True,
             extra="forbid",
+            use_enum_values = True
         )
 
 class NamespacedConfigModel(StrictBaseModel):
@@ -58,8 +59,10 @@ class InterpolationPolicy(NamespacedConfigModel):
     Configuration for Interpolation as pydantic Model.
     """
     class Method(str, Enum):
+        nearest = "nearest"
         linear = "linear"
         cubic = "cubic"
+        area = "area"
     class Boundary(str, Enum):
         extrapolate_nearest = "extrapolate_nearest"
         extrapolate_linear = "extrapolate_linear"

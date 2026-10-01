@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from extra_geom.base import DetectorGeometryBase
 from extra_geom.detectors import AGIPD_1MGeometry
@@ -6,11 +7,11 @@ from dataclasses import dataclass
 from numpy.typing import NDArray
 
 from .config import InterpolationPolicy
-from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout,JUNGFRAU_4MLayout
+from .data_structures import ImageLayout,SamplingGrid,AGIPD_1MLayout,JUNGFRAU_4MLayout,SamplingMeshRegular
 from .coordinate_mappers import CoordinateMapper,EwaldSphereMapper,IdentityMapper
 from .engines import InterpolationEngine,NumbaEngine
-from .planning import InterpolationPlanner,InterpolationPlan
-from .utils import get_max_q
+from .planning import InterpolationPlanner,InterpolationPlan,InterpolationPlannerMeshRegular
+from .utils import get_max_q,HDF5_DB
 
 @dataclass(frozen=True)
 class InterpolationStruct:
@@ -27,8 +28,31 @@ class InterpolationStruct:
     data_shape:tuple[int,int,int]
     logical_shape:tuple[int,int,int]|None
     sampling_points: NDArray
-    policy: bytes
+    policy: InterpolationPolicy
+
+    @classmethod
+    def from_dict(cls,data_dict):
+        policy = json.dumps(data_dict["policy"])
+        policy = InterpolationPolicy.model_validate_json(policy)
+        data_dict["policy"]=policy
+        plan = InterpolationPlan(**data_dict["plan"])
+        data_dict["plan"]=plan
+        return cls(**data_dict)
+        
+    @classmethod
+    def from_hdf5(cls,path,h5_path=None):
+        data_dict = HDF5_DB.load(path,h5_path=h5_path)
+        return cls.from_dict(data_dict)
     
+    def to_dict(self):
+        d = self.__dict__
+        d["plan"] = self.plan.__dict__
+        d["policy"] = json.loads(self.policy.model_dump_json())
+        return d
+        
+    def save(self,path):
+        d = self.to_dict()
+        HDF5_DB.save(path,d)
     
 
 #----------------------
@@ -64,13 +88,23 @@ class StaticInterpolator:
             self.plan = plan
         else:
             mapped_samples = self.mapper.map(sampling_grid, layout)            
-            
-            planner = InterpolationPlanner()
-            self.plan = planner.build(
-                mapped_grid=mapped_samples,
-                layout=layout,
-                policy=policy
-            )
+
+            if policy.method == policy.Method.area:
+                if not isinstance(sampling_grid,SamplingMeshRegular):
+                    raise ValueError(f'When using method="area" the sampling_grid musst be of type SamplingMeshRegular but provided type is {type(sampling_grid)}')
+                planner = InterpolationPlannerMeshRegular()
+                self.plan = planner.build(
+                    mapped_grid=mapped_samples,
+                    layout=layout,
+                    policy=policy
+                )
+            else:
+                planner = InterpolationPlanner()
+                self.plan = planner.build(
+                    mapped_grid=mapped_samples,
+                    layout=layout,
+                    policy=policy
+                )
             
         self.engine = engine(self.plan,layout,policy)
         
@@ -81,44 +115,45 @@ class StaticInterpolator:
             data_shape = self.layout.data_shape,
             logical_shape = self.layout.logical_shape,
             sampling_points = self.sampling_grid.points,
-            policy = pickle.dumps(self.policy)
+            policy = self.policy
         )
     
     @classmethod
     def from_struct(cls,
                     struct:InterpolationStruct,
                     engine:type[InterpolationEngine] = NumbaEngine):
-        policy = pickle.loads(struct.policy)
         return cls(SamplingGrid(n_panels=struct.data_shape[0],
                                 points = struct.sampling_points),
                    layout = ImageLayout.from_shape(struct.data_shape,struct.logical_shape),
-                   policy=policy,
+                   policy=struct.policy,
                    engine = engine,
                    plan = struct.plan
                    )
-        
-        
+
+    
     @classmethod
     def from_polar_ewald(cls:type,
                          geom:DetectorGeometryBase,
                          n_radial_samples = 32,
                          n_angular_samples = 256,
                          xray_energy:float = 10000,
-                         sample_detector_distance:float = 0,
+                         detector_origin:NDArray = np.array([0.0,0.0,0.0]),
                          max_q:float|None = None,
                          policy:InterpolationPolicy|None=None,
                          engine:type[InterpolationEngine] = NumbaEngine):
-        
+        if policy is None:
+            policy = InterpolationPolicy()
         if issubclass(cls.fixed_layout_class,ImageLayout):
             layout = cls.fixed_layout_class()
         else:
             layout = ImageLayout.from_shape(geom.expected_data_shape)
-        mapper = EwaldSphereMapper.from_geometry(geom,sample_detector_distance,xray_energy)
+        mapper = EwaldSphereMapper.from_geometry(geom,detector_origin,xray_energy)
         if max_q is None:
-            max_q = get_max_q(geom,sample_detector_distance,xray_energy,pad = True)
+            max_q = get_max_q(geom,detector_origin,xray_energy,pad = True)
         n_panels = len(geom.modules)
-        sampling_grid = SamplingGrid.from_uniform_polar(n_panels,(n_radial_samples,n_angular_samples),max_radius=max_q,)
-        return cls(sampling_grid,layout=layout,policy=policy,mapper=mapper,engine=engine)
+        sample_class = SamplingGrid if policy.method!=policy.Method.area else SamplingMeshRegular
+        samples = sample_class.from_uniform_polar(n_panels,(n_radial_samples,n_angular_samples),max_radius=max_q,)
+        return cls(samples,layout=layout,policy=policy,mapper=mapper,engine=engine)
 
     def __call__(self,data,masks=None,out=None,out_masks=None):
         return self.engine(data,masks = masks,out=out,out_masks=out_masks)

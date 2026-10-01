@@ -13,9 +13,11 @@ The possible values of an option are accessible via uppercase attributes, e.g.
 ```python
 policy.Method.linear
 policy.Method.cubic
+policy.Method.area
 # or equivalently
 InterpolationPolicy.Method.linear
 InterpolationPolicy.Method.cubic
+InterpolationPolicy.Method.area
 ```
 
 ## Method
@@ -23,6 +25,7 @@ Defines the interpolation type.
 
 * `Methond.linear`: [Bilinear interpolation](https://en.wikipedia.org/wiki/Bilinear_interpolation){target="blank"}
 * `Methond.cubic`: (default) [Bicubic (Catmull-Rom)](https://en.wikipedia.org/wiki/Bicubic_interpolation){target="_blank"} interpolation with $\alpha = 0.5$
+* `Methond.area`: New pixels are quads overlaying the original pixel grid. The value in each quad is the area weighted average of all original pixels that overlay this quad.
 
 
 <figure>
@@ -30,7 +33,10 @@ Defines the interpolation type.
     <img src="../images/linear_kernel.png" alt="Image 1" style="flex: 1 1 20rem; width=300px; max-width: 100%; height: auto;">
     <img src="../images/cubic_kernel.png" alt="Image 2" style="flex: 1 1 20rem; width=300px; max-width: 100%; height: auto;">
   </div>
-  <figcaption style="text-align: center;">Shows which data points of an underlying pixel grid are used in linear and cubic interpolation to computation of the value at the orange dot. Used pixels are shaded in blue and their centers are marked by black dots.</figcaption>
+  <div style="display: flex;justify-content: center;margin-top: 1rem;">
+	<img src="../images/area_kernel.png" alt="Image 3" style="flex: 1 1 20rem; width=300px; max-width: 100%; height: auto;">
+  </div>
+  <figcaption style="text-align: center;"> Shows the data points or pixel areas used to compute the value at the orange dot (or orange quadrilateral for area remapping). Used pixels or areas are shaded blue, and their centers are marked with black dots.
 </figure>
 
 ## Boundary
