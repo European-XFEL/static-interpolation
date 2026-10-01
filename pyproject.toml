@@ -1,6 +1,6 @@
 [project]
 name = "static_interpolation"
-version = "0.5.5"
+version = "0.6.0"
 
 description = "Fast interpolation of panilized detector data. Optimized for static sampling points."
 keywords = ["Interpolation","EXtra"]
