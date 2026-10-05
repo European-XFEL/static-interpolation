@@ -223,6 +223,7 @@ def _apply_masked_strict_flat_njit(imgs_flat,
                 s += weight_values[k] * img[pix_id]
             out_i[oid]=s
             out_mask_i[oid]=valid
+            
 @njit(parallel=False)
 def _apply_masked_renormalize_njit(imgs_flat,masks_flat,out,out_mask,weight_values,weight_indices,valid_sample_ids,unmasked_area_limit):
     """
@@ -261,6 +262,52 @@ def _apply_masked_renormalize_njit(imgs_flat,masks_flat,out,out_mask,weight_valu
                 s/=renorm_constant
             out_i[oid]=s
             out_mask_i[oid]=valid
+            
+@njit(parallel=False)
+def _apply_masked_renormalize_linear_cubic_njit(imgs_flat,masks_flat,out,out_mask,weight_values,weight_indices,valid_sample_ids,unmasked_area_limit):
+    """
+    Computes masked interpolation for uniform number of weights per sample.
+    This routine implements renormalization mask handling.
+    This means if an output pixel contanes more then masked_area_limit of underlying area comming from masked pixels the output is considered masked.
+    In the opposite case the weights are renormalized to only count the valid pixel area portions.
+    Special routine for linear and cubic interpolation.
+    Since the weights here are not directly related to areas and can be negative use the number of unmasked data pixels to estimate area.
+    What is still true is that the weights sum to 1 so the renormalization can be done as before only change is the unmasked_area condition.
+    """
+    M = len(imgs_flat)
+    N = len(valid_sample_ids)
+    K = weight_indices.shape[1]
+    inv_K = 1/K
+    for i in range(M):
+        img = imgs_flat[i]
+        mask = masks_flat[i]
+        out_i = out[i]
+        out_mask_i = out_mask[i]
+        for j in range(N):#prange(N):
+            oid = valid_sample_ids[j]
+            wj=weight_values[j]
+            ij = weight_indices[j]
+            s = 0.0
+            valid = True
+            renorm_constant = 0
+            unmasked_area_fraction = 0
+            for k in range(K):
+                pix_id = ij[k]
+                if not mask[pix_id]:
+                    # computation for j'th point contains a masked data point
+                    # continue to next point.
+                    continue
+                s += wj[k] * img[pix_id]
+                renorm_constant += wj[k]
+                unmasked_area_fraction += inv_K
+            if unmasked_area_fraction < unmasked_area_limit:
+                valid = False
+                s=0.0
+            elif renorm_constant!=1.0:
+                s/=renorm_constant
+            out_i[oid]=s
+            out_mask_i[oid]=valid            
+
 @njit(parallel=False)
 def _apply_masked_renormalize_flat_njit(imgs_flat,
                                         masks_flat,
@@ -492,15 +539,15 @@ class NumbaEngine(InterpolationEngine):
                                              )
         elif isinstance(self.policy.masking,InterpolationPolicy.Masking.MeanFill):
             if self.uniform_number_of_wights:
-                self.masked_kernel = partial(_apply_masked_mean_fill_njit,
-                                             weight_values = weight_values,
-                                             weight_indices = weight_indices,
-                                             valid_sample_ids = plan.valid_sample_ids,
-                                             mean_fill_indices = plan.mean_fill_indices,
-                                             nearest_data_id = plan.nearest_data_id,
-                                             mask_nearest = opt.mask_nearest,
-                                             max_masked = opt.max_masked
-                                             )
+                    self.masked_kernel = partial(_apply_masked_mean_fill_njit,
+                                                 weight_values = weight_values,
+                                                 weight_indices = weight_indices,
+                                                 valid_sample_ids = plan.valid_sample_ids,
+                                                 mean_fill_indices = plan.mean_fill_indices,
+                                                 nearest_data_id = plan.nearest_data_id,
+                                                 mask_nearest = opt.mask_nearest,
+                                                 max_masked = opt.max_masked
+                                                 )
             else:
                 self.masked_kernel = partial(_apply_masked_mean_fill_flat_njit,
                                              weight_values = weight_values,
@@ -514,12 +561,22 @@ class NumbaEngine(InterpolationEngine):
                                              )
         elif isinstance(self.policy.masking,InterpolationPolicy.Masking.Renormalize):
             if self.uniform_number_of_wights:
-                self.masked_kernel = partial(_apply_masked_renormalize_njit,
-                                             weight_values = weight_values,
-                                             weight_indices = weight_indices,
-                                             valid_sample_ids = plan.valid_sample_ids,
-                                             unmasked_area_limit = 1.0-opt.max_masked_area
-                                             )
+                if ((self.policy.method == self.policy.Method.linear) or
+                    (self.policy.method == self.policy.Method.cubic)):
+                    print('yay')
+                    self.masked_kernel = partial(_apply_masked_renormalize_linear_cubic_njit,
+                                                 weight_values = weight_values,
+                                                 weight_indices = weight_indices,
+                                                 valid_sample_ids = plan.valid_sample_ids,
+                                                 unmasked_area_limit = 1.0-opt.max_masked_area
+                                                 )
+                else:
+                    self.masked_kernel = partial(_apply_masked_renormalize_njit,
+                                                 weight_values = weight_values,
+                                                 weight_indices = weight_indices,
+                                                 valid_sample_ids = plan.valid_sample_ids,
+                                                 unmasked_area_limit = 1.0-opt.max_masked_area
+                                                 )
             else:
                 self.masked_kernel = partial(_apply_masked_renormalize_flat_njit,
                                              weight_values = weight_values,
