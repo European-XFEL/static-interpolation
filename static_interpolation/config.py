@@ -86,7 +86,12 @@ class InterpolationPolicy(NamespacedConfigModel):
                 default=True,
                 description="Whether to mask if the nearest value is masked.",
             )
-        
+        class Renormalize(NamespacedConfigModel):
+            kind:Literal['renormalize'] = 'renormalize'
+            max_masked_area: float = Field(
+                default=1/3,ge=0.0,lt=1.0,
+                description="Maximum allowed relative area beeing basked for each output pixel.",
+            )
     method: Method = Field(
         default=Method.cubic,
         description="Interpolation types"

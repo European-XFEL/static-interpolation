@@ -222,7 +222,93 @@ def _apply_masked_strict_flat_njit(imgs_flat,
                     break
                 s += weight_values[k] * img[pix_id]
             out_i[oid]=s
-            out_mask_i[oid]=valid            
+            out_mask_i[oid]=valid
+@njit(parallel=False)
+def _apply_masked_renormalize_njit(imgs_flat,masks_flat,out,out_mask,weight_values,weight_indices,valid_sample_ids,masked_area_limit):
+    """
+    Computes masked interpolation for uniform number of weights per sample.
+    This routine implements renormalization mask handling.
+    This means if an output pixel contanes more then masked_area_limit of underlying area comming from masked pixels the output is considered masked.
+    In the opposite case the weights are renormalized to only count the valid pixel area portions.
+    """
+    M = len(imgs_flat)
+    N = len(valid_sample_ids)
+    K = weight_indices.shape[1]
+    for i in range(M):
+        img = imgs_flat[i]
+        mask = masks_flat[i]
+        out_i = out[i]
+        out_mask_i = out_mask[i]
+        for j in range(N):#prange(N):
+            oid = valid_sample_ids[j]
+            wj=weight_values[j]
+            ij = weight_indices[j]
+            s = 0.0
+            valid = True
+            renorm_constant = 0
+            for k in range(K):
+                pix_id = ij[k]
+                if not mask[pix_id]:
+                    # computation for j'th point contains a masked data point
+                    # continue to next point.
+                    continue
+                s += wj[k] * img[pix_id]
+                renorm_constant += wj[k]
+            if renorm_constant < masked_area_limit:
+                valid = False
+                s=0.0
+            elif renorm_constant!=1.0:
+                s/=renorm_constant
+            out_i[oid]=s
+            out_mask_i[oid]=valid
+@njit(parallel=False)
+def _apply_masked_renormalize_flat_njit(imgs_flat,
+                                        masks_flat,
+                                        out,
+                                        out_mask,
+                                        weight_values,
+                                        weight_indices,
+                                        valid_sample_ids,
+                                        n_weights_per_sample,
+                                        masked_area_limit):
+    """
+    Same as _apply_masked_renormalize_njit but allowing unequal numbers of weights for each sampling point.
+    The number of weights for a given sampling point is provided via n_weights_per_sample.    
+    """
+    M = len(imgs_flat)
+    N = len(valid_sample_ids)
+    for i in range(M):
+        img = imgs_flat[i]
+        mask = masks_flat[i]
+        out_i = out[i]
+        out_mask_i = out_mask[i]
+        
+        seen = 0
+        for j in range(N):
+            K = n_weights_per_sample[j]
+            start = seen
+            end = seen + K
+            seen = end
+            
+            oid = valid_sample_ids[j]
+            s = 0.0
+            valid = True
+            renorm_constant=0
+            for k in range(start,end):
+                pix_id = weight_indices[k]
+                if not mask[pix_id]:
+                    # computation for j'th point contains a masked data point
+                    # continue to next point.
+                    continue
+                s += weight_values[k] * img[pix_id]
+                renorm_constant+=weight_values[k]
+            if renorm_constant < masked_area_limit:
+                valid = False
+                s=0.0
+            elif renorm_constant!=1.0:
+                s/=renorm_constant
+            out_i[oid]=s
+            out_mask_i[oid]=valid
 @njit()
 def _mean_fill_all_njit(img,mask,tmp_img,tmp_mask,mean_fill_indices,max_masked)->None:
     """
@@ -357,7 +443,8 @@ def _apply_masked_mean_fill_flat_njit(imgs_flat,
                 s += weight_values[k] * tmp_img[pix_id]
             out_i[oid]=s
             out_mask_i[oid]=valid
-            
+
+
 class NumbaEngine(InterpolationEngine):
     """ Numba interpolation engine
     That ties toghether the above defined numba kernels.
@@ -424,6 +511,22 @@ class NumbaEngine(InterpolationEngine):
                                              nearest_data_id = plan.nearest_data_id,
                                              mask_nearest = opt.mask_nearest,
                                              max_masked = opt.max_masked
+                                             )
+        elif isinstance(self.policy.masking,InterpolationPolicy.Masking.Renormalize):
+            if self.uniform_number_of_wights:
+                self.masked_kernel = partial(_apply_masked_renormalize_njit,
+                                             weight_values = weight_values,
+                                             weight_indices = weight_indices,
+                                             valid_sample_ids = plan.valid_sample_ids,
+                                             max_masked_area = opt.max_masked_area
+                                             )
+            else:
+                self.masked_kernel = partial(_apply_masked_renormalize_flat_njit,
+                                             weight_values = weight_values,
+                                             weight_indices = weight_indices,
+                                             valid_sample_ids = plan.valid_sample_ids,
+                                             n_weights_per_sample = plan.n_weights_per_sample,
+                                             max_masked_area = opt.max_masked_area
                                              )
         else:
             raise ValueError(f'{self.policy.masking} is an unknown masking type for the numba interpolation engine.')
