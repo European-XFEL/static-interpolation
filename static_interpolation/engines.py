@@ -31,13 +31,13 @@ class InterpolationEngine:
         out_masks: np.ndarray | None = None,
     )->None|NDArray|tuple[NDArray,NDArray]:
         """ Do the interpolation for a given data chunk.
-
+        
         Args:
             data (NDArray): (bunch,n_panels,num_x,num_y) input data bunch.
             masks (NDArray | None): (bunch,n_panels,num_x,num_y) Optional masks for input data (good values = True bad = False)
             out (NDArray | None): self.plan.out_shape Optional output array to store interpolation results to.
             out_masks (NDArray | None): self.plan.out_shape Optional output array to store the mask resulting from the interpolation.
-
+        
         Returns:
             None|NDArray|tuple(NDArray,NDArray): If only data is given a single NDArray is returned, If in addition out is specified then None is returned.
                                                  If only data and mask are given a tuple of two NDArrays storing the interpolation result for the data and the mask is returned.
@@ -53,17 +53,18 @@ class InterpolationEngine:
 
         if masks_provided and data.shape!=masks.shape:
             raise ValueError(f"Provided data and mask need tha have the same shape but data shape={data.shape} and masks shape = {masks.shape}")
-
+        
         ravel = self.layout.ravel
         normalize = self.layout.normalize
-
+        orig_shape = data.shape
+        trim_output_shape = (orig_shape==self.layout.data_shape[1:]) and (self.layout.data_shape[0]==1) # images for single panel data
+        trim_output_shape = trim_output_shape or ((self.layout.data_shape[0]!=1) and orig_shape == self.layout.data_shape) # single image of multipanel data
         
         data = normalize(data)
         data_flat = ravel(data)
         
         n = data_flat.shape[0]
         expected_out_shape = (n,) + self.plan.out_shape
-
         # check for correct shapes
         if out is not None and out.shape != expected_out_shape:
             raise ValueError(f"out has shape {out.shape}, expected {expected_out_shape}")
@@ -77,7 +78,6 @@ class InterpolationEngine:
             )
         out_flat = out.reshape(n,-1)
         
-        
         if masks_provided:
             masks = normalize(masks)
             masks_flat = ravel(masks)
@@ -86,13 +86,20 @@ class InterpolationEngine:
             out_masks_flat = out_masks.reshape(n,-1)
                 
             self._apply_masked(data_flat,masks_flat,out_flat,out_masks_flat)
-            
             if create_out:
-                return out,out_masks
+                # detect if only a single input dataset was provided
+                # if so get rid of the additional axis
+                if trim_output_shape:
+                    return out[0],out_masks[0]
+                else:
+                    return out,out_masks
         else:            
             self._apply_unmasked(data_flat,out_flat)
             if create_out:
-                return out
+                if trim_output_shape:
+                    return out[0]
+                else:
+                    return out
             
     def _apply_masked(self,data: np.ndarray,masks: np.ndarray,out: np.ndarray,out_masks: np.ndarray):
         pass

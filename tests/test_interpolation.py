@@ -328,7 +328,80 @@ class TestNumbaEngine:
     
         assert np.allclose(out_flat, out_nonflat)
         assert np.array_equal(out_mask_flat, out_mask_nonflat)
+        
+    def test_single_image_single_panel_shape_correction(self):
+        rng = np.random.RandomState(123456)
+        n_data = 10
+        n_samples = 24
+        out_shape = (n_samples,)
+        
+        sample_points = np.stack((rng.random(n_samples)*(n_data-1),rng.random(n_samples)*(n_data-1)),axis=-1)
+        
+        layout = data_structures.ImageLayout.from_shape((n_data,n_data))
+        samples = data_structures.SamplingGrid(points = sample_points[None,...],n_panels=1)
+        opt = config.InterpolationPolicy()
+        opt.method = opt.Method.cubic
+        opt.boundary = opt.Boundary.extrapolate_linear
+        reg1 = interpolators.StaticInterpolator(samples,layout=layout,policy=opt)
+        engine = reg1.engine
+        
+        image = np.random.rand(n_data,n_data)
+        mask = np.random.rand(n_data,n_data)>0.5
+        
+        out = engine(image)
+        out2,out2_mask = engine(image,mask)
+        assert out.shape == out_shape, f'sampled image (no mask branch) has shape {out.shape} but should have shape {out_shape}'
+        assert out2.shape == out_shape, f'sampled image (mask branch) has shape {out2.shape} but should have shape {out_shape}'
+        assert out2_mask.shape == out_shape, f'sampled image mask has shape {out2_mask.shape} but should have shape {out_shape}'
 
+        n_images = 10
+        out_shape = (n_images,n_samples)
+        image = np.random.rand(n_images,n_data,n_data)
+        mask = np.random.rand(n_images,n_data,n_data)>0.5
+        
+        out = engine(image)
+        out2,out2_mask = engine(image,mask)
+        assert out.shape == out_shape, f'sampled images (no mask branch) has shape {out.shape} but should have shape {out_shape}'
+        assert out2.shape == out_shape, f'sampled imags (mask branch) has shape {out2.shape} but should have shape {out_shape}'
+        assert out2_mask.shape == out_shape, f'sampled images mask has shape {out2_mask.shape} but should have shape {out_shape}'
+        
+    def test_single_image_multi_panel_shape_correction(self):
+        rng = np.random.RandomState(123456)
+        n_data = 10
+        n_samples = 24
+        out_shape = (n_samples,)
+        
+        sample_points = np.stack((rng.random(n_samples)*(n_data-1)/3,rng.random(n_samples)*(n_data-1)/3),axis=-1)
+        sample_points = np.stack((sample_points,sample_points+n_data),axis=0)
+        
+        layout = data_structures.ImageLayout.from_shape((2,n_data,n_data))
+        samples = data_structures.SamplingGrid(points = sample_points,n_panels=2)
+        opt = config.InterpolationPolicy()
+        opt.method = opt.Method.cubic
+        opt.boundary = opt.Boundary.extrapolate_linear
+        reg1 = interpolators.StaticInterpolator(samples,layout=layout,policy=opt)
+        engine = reg1.engine
+        
+        image = np.random.rand(2,n_data,n_data)
+        mask = np.random.rand(2,n_data,n_data)>0.5
+        
+        out = engine(image)
+        out2,out2_mask = engine(image,mask)
+        assert out.shape == out_shape, f'sampled image (no mask branch) has shape {out.shape} but should have shape {out_shape}'
+        assert out2.shape == out_shape, f'sampled image (mask branch) has shape {out2.shape} but should have shape {out_shape}'
+        assert out2_mask.shape == out_shape, f'sampled image mask has shape {out2_mask.shape} but should have shape {out_shape}'
+        
+        n_images = 10
+        out_shape = (n_images,n_samples)
+        image = np.random.rand(n_images,2,n_data,n_data)
+        mask = np.random.rand(n_images,2,n_data,n_data)>0.5
+        
+        out = engine(image)
+        out2,out2_mask = engine(image,mask)
+        assert out.shape == out_shape, f'sampled images (no mask branch) has shape {out.shape} but should have shape {out_shape}'
+        assert out2.shape == out_shape, f'sampled imags (mask branch) has shape {out2.shape} but should have shape {out_shape}'
+        assert out2_mask.shape == out_shape, f'sampled images mask has shape {out2_mask.shape} but should have shape {out_shape}'
+        
 def test_from_struct():
     rng = np.random.RandomState(123456)
     n_data = 10
