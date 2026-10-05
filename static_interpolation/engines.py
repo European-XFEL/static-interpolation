@@ -563,7 +563,6 @@ class NumbaEngine(InterpolationEngine):
             if self.uniform_number_of_wights:
                 if ((self.policy.method == self.policy.Method.linear) or
                     (self.policy.method == self.policy.Method.cubic)):
-                    print('yay')
                     self.masked_kernel = partial(_apply_masked_renormalize_linear_cubic_njit,
                                                  weight_values = weight_values,
                                                  weight_indices = weight_indices,
