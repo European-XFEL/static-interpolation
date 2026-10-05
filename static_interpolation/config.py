@@ -107,7 +107,7 @@ class InterpolationPolicy(NamespacedConfigModel):
     )
             
     masking: Annotated[
-        Masking.Strict | Masking.MeanFill,
+        Masking.Strict | Masking.MeanFill | Masking.Renormalize,
         Field(discriminator='kind')] = Field(
         default_factory=Masking.Strict,
         description=Masking.description
