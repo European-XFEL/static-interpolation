@@ -56,6 +56,10 @@ Sampling points which lie inside the data range but whose kernel contains points
 This option specifies how masked data points(pixels) should be treated.
 
 * `Masking.Strict()`: (default)  A Sampling point is considered masked if any of the data points needed for its interpolation is masked. E.g. for cubic(linear) interpolation this means that an output sample point is masked, if any of its nearest 4x4 (2x2) pixel values on the detector is masked.
+* `Masking.Renormalize(max_masked_area:float)`: Compute the value of a sampling point by renormalizing the weights using only unmasked pixels, provided that the masked fraction of used pixel does notexceed max_masked_area (0 = nothing masked; 1 = entirely masked). For linear and cubic interpolation, the fraction is calculated over their respective stencils: 4 pixels for linear and 16 for cubic interpolation. For the area method the exactly computed relative areas of overlapping pixels are used.  
+   __max_masked_area__: is a float in the intervall [0,1) (default=1/3), specifying the maximal allowed relative masked output pixel area.  
+
+
 * `Masking.MeanFill(max_masked:int,mask_nearest:bool)`: Try to fill in masked data values by taking the mean of the 8 surrounding pixels.  
    __max_masked__: is an integer in 1,...,7 (default=3), specifying how many surrounding pixels are at most allowed to be masked.  
    __mask_nearest__: is a boolean flag (default=True). If it is set, then sampling points whose nearest data point is masked (before trying to fill their values) are always masked as well.
