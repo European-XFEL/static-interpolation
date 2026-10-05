@@ -56,7 +56,7 @@ class InterpolationEngine:
 
         ravel = self.layout.ravel
         normalize = self.layout.normalize
-
+        orig_shape = data.shape
         
         data = normalize(data)
         data_flat = ravel(data)
@@ -88,11 +88,19 @@ class InterpolationEngine:
             self._apply_masked(data_flat,masks_flat,out_flat,out_masks_flat)
             
             if create_out:
-                return out,out_masks
+                # detect if only a single input dataset was provided
+                # if so get rid of the additional axis 
+                if len(orig_shape)==len(self.layout.data_shape):
+                    return out[0],out_masks[0]
+                else:
+                    return out,out_masks
         else:            
             self._apply_unmasked(data_flat,out_flat)
             if create_out:
-                return out
+                if len(orig_shape)==len(self.layout.data_shape):
+                    return out[0]
+                else:
+                    return out
             
     def _apply_masked(self,data: np.ndarray,masks: np.ndarray,out: np.ndarray,out_masks: np.ndarray):
         pass
